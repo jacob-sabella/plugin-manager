@@ -77,7 +77,7 @@ typedef struct {
 #define PM_VERSION "1.3.4"
 #endif
 #define WORK "/tmp/openmpc-pm"
-#define MAXPKG 256
+#define MAXPKG 1024   /* cards kept: the catalog (272 plugins on 2026-11-17), then local zips and unregistered folders; what does not fit is logged */
 #define ROWS 5      /* plugin cards per page */
 #ifndef ADDINS_DIR
 #define ADDINS_DIR "/data/mpc-addins"   /* one folder per addin id, as mpc-vst-plugins' addin installer lays them out */
@@ -733,6 +733,7 @@ static const char *top_member(const char *k, const char *v, void *ud) {
         whats_new(&x);
         x.notes = x.about = x.vnotes = x.vabout = NULL;
         if (x.id[0] && l->n < MAXPKG) l->pkg[l->n++] = x;
+        else if (x.id[0]) logf_("catalog: more than %d plugins, %s left out", MAXPKG, x.id);
         p = ws(p);
         if (*p == ',') { p = ws(p + 1); continue; }
         FREE_NOTES();
