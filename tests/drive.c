@@ -226,6 +226,7 @@ int main(int argc, char **argv) {
     press("set_beta_btn"); press("set_web_btn");
     usleep(300000);
     printf("after: beta=%s web=%s\n", get("set_beta_txt"), get("set_web_txt"));
+    printf("web address: header=|%s| settings=|%s|\n", get("hdr_web_txt"), get("set_web_url"));
     press("set_beta_btn");
     printf("again: beta=%s\n", get("set_beta_txt"));
     printf("cache: |%s|\n", get("set_cache_txt")); press("set_cache_btn");

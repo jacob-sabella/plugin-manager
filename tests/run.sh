@@ -250,6 +250,10 @@ rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir 
 sh tests/devices/two-targets.sh
 PM_CACHE_PCT=99 PM_NO_WEB=1 /tmp/drive_addins settings > /tmp/settings.out
 grep -qF "before: beta=SHOWN web=ON" /tmp/settings.out && grep -qF "after: beta=HIDDEN web=OFF" /tmp/settings.out && grep -qF "again: beta=SHOWN" /tmp/settings.out || { cat /tmp/settings.out; exit 1; }
+# the web page address in the PLUGINS header and on the SETTINGS row while the page is served (users could not find it)
+rm -f /tmp/openmpc-pm/.openmpcpm-settings /media/*/.openmpcpm-settings /sdcard/.openmpcpm-settings 2>/dev/null || true
+/tmp/drive_addins settings > /tmp/settings_web.out
+grep -qE "web address: header=\|WEB PAGE  [0-9.]+:8790\| settings=\|Open http://[0-9.]+:8790 on your phone or computer\|" /tmp/settings_web.out || { grep "web address" /tmp/settings_web.out; exit 1; }
 grep -qF "cache queued: |99% used  ·  clears on APPLY| apply=1" /tmp/settings.out || { cat /tmp/settings.out; exit 1; }
 grep -qx "beta=1" /media/az01-internal/.openmpcpm-settings && grep -qx "web=0" /media/az01-internal/.openmpcpm-settings || { cat /media/az01-internal/.openmpcpm-settings; exit 1; }
 # ABOUT: the page names the running version (PM_VERSION) and this MPC, and never claims an installed copy it cannot see

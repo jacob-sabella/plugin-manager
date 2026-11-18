@@ -4648,6 +4648,18 @@
    "name": "Setting: background server button",
    "type": "trigger",
    "momentary": true
+  },
+  {
+   "key": "hdr_web_txt",
+   "name": "Header: web page address",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "set_web_url",
+   "name": "Setting: web page address",
+   "type": "readout",
+   "display": "string"
   }
  ]
 }

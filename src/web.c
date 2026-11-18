@@ -400,6 +400,15 @@ static int web_quit(mgr_t *m) {
     return q;
 }
 
+static void web_url_refresh(void) {   /* web_url from this MPC's address now: it can change (Wi-Fi joined later, DHCP) */
+    char a[48], u[64] = "";
+    web_addr(a, sizeof a);
+    if (a[0]) snprintf(u, sizeof u, "http://%s:%d", a, WEB_PORT);
+    pthread_mutex_lock(&web_mu);
+    snprintf(web_url, sizeof web_url, "%s", u);
+    pthread_mutex_unlock(&web_mu);
+}
+
 static void *web_thread(void *ud) {
     mgr_t *m = ud;
     int s = -1;
@@ -410,9 +419,10 @@ static void *web_thread(void *ud) {
             int one = 1;
             struct sockaddr_in a = {.sin_family = AF_INET, .sin_port = htons(WEB_PORT), .sin_addr.s_addr = htonl(INADDR_ANY)};
             if (s >= 0) setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
-            if (s < 0 || bind(s, (struct sockaddr *)&a, sizeof a) || listen(s, 4)) {   /* another instance has it */
+            if (s < 0 || bind(s, (struct sockaddr *)&a, sizeof a) || listen(s, 4)) {   /* another instance or the background server has it */
                 if (s >= 0) close(s);
                 s = -1;
+                web_url_refresh();   /* the page is still served, by whoever holds the port: the screen shows its address too */
                 for (int i = 0; i < 4 && !web_quit(m); i++) usleep(500000);
                 continue;
             }
@@ -420,12 +430,7 @@ static void *web_thread(void *ud) {
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
         if (ts.tv_sec - last >= 5) {
-            char a[48], u[64] = "";
-            web_addr(a, sizeof a);
-            if (a[0]) snprintf(u, sizeof u, "http://%s:%d", a, WEB_PORT);
-            pthread_mutex_lock(&web_mu);
-            snprintf(web_url, sizeof web_url, "%s", u);
-            pthread_mutex_unlock(&web_mu);
+            web_url_refresh();
             last = ts.tv_sec;
         }
         struct pollfd pf = {s, POLLIN, 0};
