@@ -372,6 +372,7 @@ int main(int argc, char **argv) {
     printf("after APPLY:\n"); cards();
     e->destroy(m); return 0;
   }
+  if (argc > 1 && !strcmp(argv[1], "twin")) { set("kind", "2"); set("tab", "1"); printf("INSTALLED effects:\n"); cards(); e->destroy(m); return 0; }   /* #22 */
   if (argc > 1 && !strcmp(argv[1], "status")) { cards(); e->destroy(m); return 0; }   /* what the manager says on its own (the last apply) */
   if (argc > 2 && !strcmp(argv[1], "one")) {   /* queue the effect called argv[2] and APPLY: the prepare step's verdict */
     if (argc > 4) set("tab", argv[4]);

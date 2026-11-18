@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Offline tests in the gcc:12 Docker image (needs network: they read the live catalog and download one zip).
-#   ONLY=<section> tests/run.sh   one section (ONLY=devices:2/4: a quarter of the fake devices, as CI runs them) (devices addins links vst2 pick theme safety arch web) in a minute or two; no ONLY: everything (about 9 minutes)
+#   ONLY=<section> tests/run.sh   one section (ONLY=devices:2/4: a quarter of the fake devices, as CI runs them) (devices addins links regress vst2 pick theme safety arch web) in a minute or two; no ONLY: everything (about 9 minutes)
 #   tests/run.sh            the wrapper host test, each fake device in tests/devices/, then the addin flow against
 #                           an offline fixture (tests/fixture.py: three addin packages and a file:// catalog)
 # A fake device is a shell script that builds the device's files inside the container: MPC.settings (the real format,
@@ -80,6 +80,31 @@ grep -q "apply_state 3" /tmp/links-yes.out
 grep -q "/linky.*install.sh\|Linky-1.0.0/install.sh" /tmp/openmpc-pm/apply.sh
 echo "links OK"
 fi # links
+if want regress; then
+echo "== regress (offline fixture): #17 a drive with a space, #10 a JSON-escaped folder name, #22 two entries with one uid"
+rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
+sh tests/devices/mpc-one.sh
+# #17: a local zip on a drive whose name has a space: the file:// address is percent-encoded, so the download works
+mkdir -p "/media/MY CARD/Synths" "/media/MY CARD/local-plugins"
+sed -i "s|<Location>/media/CARD/Synths</Location>|<Location>/media/MY CARD/Synths</Location>|" /media/az01-internal/Settings/MPC/MPC.settings
+cp /p/vst/build/tests/Linky-1.0.0-mpc-armv7.zip "/media/MY CARD/local-plugins/Spacey-1.0.0.zip"
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Spacey-1.0.0 1 > /tmp/reg-space.out
+grep -q "apply_state 3" /tmp/reg-space.out || { cat /tmp/reg-space.out; echo "FAIL #17: a local zip on a drive with a space did not reach ready"; exit 1; }
+# #10: the manifest folder "πToniC" is the folder πToniC (the apply step checks and backs up that folder)
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one PiToniC > /tmp/reg-pi.out
+grep -q "apply_state 3" /tmp/reg-pi.out || { cat /tmp/reg-pi.out; exit 1; }
+grep -qF "πToniC" /tmp/openmpc-pm/apply.sh && ! grep -qF "u03c0" /tmp/openmpc-pm/apply.sh || { grep -n "ToniC\|u03c0" /tmp/openmpc-pm/apply.sh; echo "FAIL #10: the folder name was not decoded"; exit 1; }
+# #22: Twin B is installed (its manifest id says so) with the uid that only Twin A lists in the catalog: Twin A must stay not installed
+sh tests/devices/mpc-one.sh
+T="/media/az01-internal/Synths/acme - VST - Twin B"; mkdir -p "$T"; : > "$T/twin.so"
+echo "{\"schema\":1,\"id\":\"twin-b\",\"version\":\"1.0.0\"}" > "$T/mpc-plugin.json"
+sed -i "s|</KNOWNPLUGINS>\r\$|<PLUGIN name=\"Twin B\" descriptiveName=\"Twin B\" format=\"VST\" category=\"Fx\" manufacturer=\"acme\" version=\"1.0\" file=\"$T/twin.so\" uid=\"54574e31\" isInstrument=\"0\"/></KNOWNPLUGINS>\r|" /media/az01-internal/Settings/MPC/MPC.settings
+grep -q 54574e31 /media/az01-internal/Settings/MPC/MPC.settings || { echo "FAIL: test setup"; exit 1; }
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins twin > /tmp/reg-twin.out
+grep -q "card 1: TB .*state=3 inst=1" /tmp/reg-twin.out || { cat /tmp/reg-twin.out; echo "FAIL #22: Twin B is not listed as installed"; exit 1; }
+grep -q "card 2: -" /tmp/reg-twin.out || { cat /tmp/reg-twin.out; echo "FAIL #22: Twin A counted as installed through the shared uid"; exit 1; }
+echo "regress OK"
+fi # regress
 if want vst2; then
 echo "== vst2 (offline fixture): MPC OS 3.10.1, VST2 Support on: move the old installs, install into VST2 Plugins with a plugin.json"
 rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
