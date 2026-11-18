@@ -169,6 +169,11 @@ int main(int argc, char **argv) {
   if (argc > 1 && !strncmp(argv[1], "theme", 5)) {   /* both skins in the plugin folder (tests/run.sh sets PM_OWN): the switch, the prompt, then APPLY */
     printf("start: can=%s theme=%s |%s| apply_state=%s\n", get("theme_can"), get("theme"), get("theme_txt"), get("apply_state"));
     if (!strcmp(argv[1], "themeshow")) { e->destroy(m); return 0; }
+    if (!strcmp(argv[1], "themeboot")) {   /* an update brought the light skin back while dark is chosen: the first start prepares the swap and opens the prompt */
+      for (int i = 0; i < 60 && strcmp(get("confirm"), "1"); i++) sleep(1);
+      printf("boot: confirm=%s apply_state=%s |%s|\n", get("confirm"), get("apply_state"), get("confirm_txt1"));
+      e->destroy(m); return 0;
+    }
     set("theme_btn", "1"); press("theme_btn");   /* one tap, delivered twice (a Live III does that) */
     printf("pressed: theme=%s |%s| apply_state=%s status: %s\n", get("theme"), get("theme_txt"), get("apply_state"), get("status"));
     press("apply");

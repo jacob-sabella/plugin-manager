@@ -368,6 +368,10 @@ sh /tmp/openmpc-pm/apply.sh
 [ -d "/tmp/own/Plugin Skins.light" ] && [ -d "/tmp/own/Plugin Skins.dark" ] || { echo "FAIL: a skin variant was lost"; exit 1; }
 /tmp/drive_addins themeshow > /tmp/theme2.out
 grep -qF "start: can=1 theme=1 |LIGHT| apply_state=0" /tmp/theme2.out
+# an update brought the packaged light skin back while dark is saved: the first start prepares the swap and opens the restart prompt by itself
+echo light > "/tmp/own/Plugin Skins/.theme"; echo dark > /media/az01-internal/.openmpcpm-theme
+/tmp/drive_addins themeboot > /tmp/theme3.out
+grep -qF "boot: confirm=1 apply_state=3 |Theme: dark|" /tmp/theme3.out || { cat /tmp/theme3.out; exit 1; }
 unset PM_OWN
 echo "theme OK"
 fi # theme

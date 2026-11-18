@@ -140,6 +140,7 @@ typedef struct {
     char kb_key[16];              /* that key */
     int theme, theme_applied, theme_can;   /* 0 dark, 1 light: the one wanted, the one in `Plugin Skins` at MPC's start, and whether the folder holds both skins */
     char own[300];                /* this plugin's own folder (its skins live there) */
+    int theme_seen, theme_boot;   /* theme_init ran once; the wanted theme differed from the skin in place at that first start (an update brings the packaged skin) */
     int tsel, reprompt;           /* which usable location new installs go to; CHANGE re-prepares and reopens the prompt */
     int sort;                     /* 0 last updated, 1 newest (first release), 2 most downloaded, 3 name */
     char azf;                     /* the A-Z filter: 0 none, '#' or 'A'..'Z' (the first letter or digit of the name) */
@@ -1555,6 +1556,7 @@ static void theme_init(mgr_t *m) {   /* after the device probe: where the settin
         m->theme = theme_read(m->dev->base, ".openmpcpm-theme", 1);   /* light is the default */
         snprintf(a, sizeof a, "%s/Plugin Skins", m->own);
         m->theme_applied = theme_read(a, ".theme", 1);   /* inside the skin itself: a reinstall of this plugin brings the packaged (dark) skin and this file together */
+        if (!m->theme_seen) { m->theme_seen = 1; m->theme_boot = m->theme_can && m->theme != m->theme_applied; }
     }
 }
 
@@ -3036,6 +3038,7 @@ static void do_launch(mgr_t *m) {
 #endif
 }
 
+static int count_queued(const mgr_t *m);
 static void *worker(void *ud) {
     mgr_t *m = ud;
     mkdir(WORK, 0755);
@@ -3049,7 +3052,21 @@ static void *worker(void *ud) {
         m->busy = job;
         m->rev++;
         pthread_mutex_unlock(&m->mu);
-        if (job == J_REFRESH) do_refresh(m);
+        if (job == J_REFRESH) {
+            do_refresh(m);
+            /* An update brings the packaged (light) skin back while the saved choice may be dark: the swap is already queued, but nobody
+             * would see it. The first start after that prepares it and opens the restart prompt (CANCEL keeps it queued). */
+            pthread_mutex_lock(&m->mu);
+            int boot = m->theme_boot && theme_dirty(m) && count_queued(m) == 1 && !m->dev->problem[0] && !m->quit;
+            m->theme_boot = 0;
+            pthread_mutex_unlock(&m->mu);
+            if (boot) {
+                do_prepare(m);
+                pthread_mutex_lock(&m->mu);
+                if (m->ready) m->confirm = 1;
+                pthread_mutex_unlock(&m->mu);
+            }
+        }
         else if (job == J_PREPARE) do_prepare(m);
         else if (job == J_LAUNCH) do_launch(m);
         else if (job == J_PATCH) do_patch(m);
