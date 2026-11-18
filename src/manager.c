@@ -3810,7 +3810,7 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
         web_link(m, u, sizeof u);
         if (!u[0]) snprintf(b, n, " ");
         else if (key[0] == 'h') snprintf(b, n, "WEB PAGE  %s", u + 7);   /* the header: no "http://", browsers add it */
-        else snprintf(b, n, "Open %s on your phone or computer", u);
+        else snprintf(b, n, "%s", u);   /* SETTINGS: the full address; the row text below says what it is for */
     }
     else if (!strcmp(key, "set_web_txt")) snprintf(b, n, "%s%s", m->web_pref ? "ON" : "OFF", m->web_pref != m->web_on ? "  \xc2\xb7  restart" : "");
     else if (!strcmp(key, "set_bgsrv_txt")) {
