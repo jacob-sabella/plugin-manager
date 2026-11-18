@@ -3427,6 +3427,19 @@ static int repeated(long long *last, int ms) {
 
 #include "web.c"
 
+/* the web page's address for the screen ("" when nothing serves it): from whichever instance serves it, or the background
+ * server's when this plugin's own web page is off */
+static void web_link(const mgr_t *m, char *b, int n) {
+    pthread_mutex_lock(&web_mu);
+    snprintf(b, n, "%s", web_url);
+    pthread_mutex_unlock(&web_mu);
+    if (!b[0] && m->bg_run) {
+        char a[48];
+        web_addr(a, sizeof a);
+        if (a[0]) snprintf(b, n, "http://%s:%d", a, WEB_PORT);
+    }
+}
+
 /* the trigger params (a tap), not the option params the host steps on purpose (kind, sort, ...), the keyboard keys or THEME (its own window) */
 static int is_button(const char *key) {
     static const char *const end[] = {"_act", "_open", "_more", "_reinstall", "_remove", "_btn", "_pick1", "_pick2", "_pick3", "_pick4",
@@ -3791,6 +3804,13 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
         char u[24] = "unknown";
         if (cp >= 0) snprintf(u, sizeof u, "%d%% used", cp);
         snprintf(b, n, "%s%s", u, m->clearcache ? "  \xc2\xb7  clears on APPLY" : cp >= 85 ? "  \xc2\xb7  FULL" : "");
+    }
+    else if (!strcmp(key, "hdr_web_txt") || !strcmp(key, "set_web_url")) {   /* the PLUGINS header and the SETTINGS web page row */
+        char u[64];
+        web_link(m, u, sizeof u);
+        if (!u[0]) snprintf(b, n, " ");
+        else if (key[0] == 'h') snprintf(b, n, "WEB PAGE  %s", u + 7);   /* the header: no "http://", browsers add it */
+        else snprintf(b, n, "Open %s on your phone or computer", u);
     }
     else if (!strcmp(key, "set_web_txt")) snprintf(b, n, "%s%s", m->web_pref ? "ON" : "OFF", m->web_pref != m->web_on ? "  \xc2\xb7  restart" : "");
     else if (!strcmp(key, "set_bgsrv_txt")) {
