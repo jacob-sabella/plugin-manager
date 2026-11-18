@@ -2375,7 +2375,15 @@ static int add_local(const device_t *d, pkg_t *pkg, int n) {
             snprintf(p->kind, sizeof p->kind, "instrument");
             snprintf(p->dist, sizeof p->dist, "release");
             snprintf(p->latest, sizeof p->latest, "%s", mf.version[0] ? mf.version : "local");
-            snprintf(p->url, sizeof p->url, "file://%s", path);
+            {   /* percent-encode: libcurl rejects a raw space, and a drive's name (/media/MPC SD Card) is not the user's to choose */
+                size_t o = snprintf(p->url, sizeof p->url, "file://");
+                for (const char *q = path; *q && o + 4 < sizeof p->url; q++) {
+                    unsigned char ch = (unsigned char)*q;
+                    if (isalnum(ch) || strchr("-._~/", ch)) p->url[o++] = (char)ch;
+                    else o += snprintf(p->url + o, 4, "%%%02X", ch);
+                }
+                p->url[o] = 0;
+            }
             snprintf(p->sha, sizeof p->sha, "%s", sha);
             snprintf(p->channel, sizeof p->channel, "stable");
             snprintf(p->tags, sizeof p->tags, "local");
@@ -2478,13 +2486,16 @@ static void scan_installed(const device_t *d, pkg_t *pkg, int n) {
             jobject(js, manifest_member, &mf);
             free(js);
         }
+        int idknown = 0;   /* the folder's own id names a catalog entry: it is that entry only (Machinemodule and its Gen2 build share a uid / name) */
+        for (int i = 0; i < n && mf.id[0] && !idknown; i++)
+            idknown = !is_addin(&pkg[i]) && !strcmp(mf.id, !strncmp(pkg[i].id, "local-", 6) ? pkg[i].id + 6 : pkg[i].id);
         for (int i = 0; i < n; i++) {
             pkg_t *p = &pkg[i];
             if (is_addin(p)) continue;
             /* a local zip's card is "local-<id>": it is the same plugin as the installed <id> (else it would offer Install forever, never Remove) */
             const char *pid = !strncmp(p->id, "local-", 6) ? p->id + 6 : p->id;
             int hit = mf.id[0] ? !strcmp(mf.id, pid) : !strcmp(en->name, p->name);
-            for (int c = 0; c < 4 && !hit; c++) hit = p->uids[c][0] && !strcasecmp(p->uids[c], en->uid);
+            for (int c = 0; c < 4 && !hit && !idknown; c++) hit = p->uids[c][0] && !strcasecmp(p->uids[c], en->uid);
             if (!hit || p->installed[0]) continue;
             snprintf(p->installed, sizeof p->installed, "%s", mf.version[0] ? mf.version : "?");
             snprintf(p->folder, sizeof p->folder, "%s", folder);
@@ -2708,8 +2719,8 @@ static void manifest_str(const char *dir, const char *key, char *out, size_t n) 
     if (!s) return;
     char *k = strstr(s, pat);
     if (k && (k = strchr(k + strlen(pat), ':')) && (k = strchr(k, '"'))) {
-        char *e = strchr(++k, '"');
-        if (e && (size_t)(e - k) < n) { memcpy(out, k, e - k); out[e - k] = 0; }
+        char dec[512];   /* decoded: "\u03c0ToniC" is the folder πToniC, not the literal backslash text */
+        if (jstr(k, dec, sizeof dec) && strlen(dec) < n) snprintf(out, n, "%s", dec);
     }
     free(s);
 }
