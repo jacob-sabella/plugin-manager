@@ -2950,7 +2950,8 @@ static void prepare(mgr_t *m, pkg_t *q) {
                 snprintf(dirp, sizeof dirp, "%s/%s", target, strrchr(fo, '/') ? strrchr(fo, '/') + 1 : fo);   /* quoted below (shq): L'Cronx - VST - ... */
             char dq[1200];
             shq(dirp, dq, sizeof dq);
-            if (!synths[0] || !safe(synths) || (is_addin(p) && !m->dev->addins[0])) { err = "has no install location"; break; }
+            if (is_addin(p) && !m->dev->addins[0]) { err = "cannot be installed: this MPC has no writable " ADDINS_DIR " for addins"; break; }
+            if (!synths[0] || !safe(synths)) { err = "has no install location"; break; }
             if (is_addin(p) && p->queued == Q_INSTALL)
                 fprintf(f, "echo '-- install %s %s'\nitem '%s' '%s' install '%s' sh '%s/install.sh' -y -n -t '%s' && rm -rf '" WORK "/%s' '" WORK "/%s.zip'\n",
                         p->id, p->latest, p->id, dq, p->latest, p->dir, synths, p->id, p->id);

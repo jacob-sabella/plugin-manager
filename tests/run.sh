@@ -103,6 +103,11 @@ grep -q 54574e31 /media/az01-internal/Settings/MPC/MPC.settings || { echo "FAIL:
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins twin > /tmp/reg-twin.out
 grep -q "card 1: TB .*state=3 inst=1" /tmp/reg-twin.out || { cat /tmp/reg-twin.out; echo "FAIL #22: Twin B is not listed as installed"; exit 1; }
 grep -q "card 2: -" /tmp/reg-twin.out || { cat /tmp/reg-twin.out; echo "FAIL #22: Twin A counted as installed through the shared uid"; exit 1; }
+# #5: an addin on an MPC with no writable /data says so, not "has no install location" (which is about the Synths folders)
+rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media; sh tests/devices/mpc-one.sh
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one "Beta addin" 3 > /tmp/reg-noaddin.out || true
+grep -qF "this MPC has no writable /data/mpc-addins for addins" /tmp/reg-noaddin.out || { cat /tmp/reg-noaddin.out; echo "FAIL #5: the addin message"; exit 1; }
+! grep -q "has no install location" /tmp/reg-noaddin.out || { echo "FAIL #5: the misleading message"; exit 1; }
 echo "regress OK"
 fi # regress
 if want vst2; then
