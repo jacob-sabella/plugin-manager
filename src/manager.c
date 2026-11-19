@@ -2462,6 +2462,16 @@ static void scan_installed(const device_t *d, pkg_t *pkg, int n) {
         char *sl = strrchr(folder, '/');
         if (!sl) continue;
         *sl = 0;
+        /* An entry whose plugin folder is gone from a drive that is there (deleted by hand or by another tool, the entry left behind)
+         * is not an install: counted as one, UPDATE put the plugin back where it was deleted instead of on the picked drive (Force,
+         * 2026-11-18). A drive that is not mounted (its Synths folder missing too) keeps its plugins listed as installed. */
+        if (!is_file(en->file)) {
+            char drv[256];   /* the Synths folder: what comes before "/<maker> - VST - <name>" (also in the SDK layout's ".../VST/x.so") */
+            snprintf(drv, sizeof drv, "%s", folder);
+            char *v = strstr(drv, " - VST - ");
+            while (v && v > drv && v[-1] != '/') v--;
+            if (v && v > drv + 1) { v[-1] = 0; if (is_dir(drv)) continue; }
+        }
         /* Akai's SDK layout keeps the binary one level down ("<maker> - VST - <name>/VST/<name>-arm64.so"): the plugin folder is the parent */
         if (!strstr((sl = strrchr(folder, '/')) ? sl : folder, " - VST - ") && sl && sl != folder) {
             *sl = 0;
