@@ -84,6 +84,14 @@ pkg("Wrongarch", [("Wrongarch-1.0.0/install.sh", "#!/bin/sh\nexit 0\n"), ("Wrong
 pkg("Newlib", [("Newlib-1.0.0/install.sh", "#!/bin/sh\nexit 0\n"), ("Newlib-1.0.0/mpc-plugin.json", '{"arch": "armv7", "max_glibc": "9.99"}\n')], "2024-12-01")
 pkg("Oldos", [("Oldos-1.0.0/install.sh", "#!/bin/sh\nexit 0\n"), ("Oldos-1.0.0/mpc-plugin.json", '{"arch": "armv7", "os_compat": ["2.x"]}\n')], "2024-11-01")
 pkg("Evil", [("Evil-1.0.0/install.sh", "#!/bin/sh\nexit 0\n"), ("Evil-1.0.0/../escape.txt", "x")], "2025-01-01")
+# #10: a package whose manifest folder holds a JSON escape (written by a tool that escapes non-ASCII): the plugin folder is "πToniC"
+pkg("PiToniC", [("PiToniC-1.0.0/install.sh", "#!/bin/sh\nexit 0\n"), ("PiToniC-1.0.0/uninstall.sh", "#!/bin/sh\nexit 0\n"),
+                ("PiToniC-1.0.0/mpc-plugin.json", json.dumps({"folder": "portable/\u03c0ToniC", "arch": "armv7"}) + "\n")], "2024-10-01")
+# #22: Machinemodule's shape: twin-a lists the VST uid in the catalog, twin-b (its Gen2 build) does not but its package ships the same uid; twin-b is installed (tests/run.sh, section regress)
+for tid, tname in (("twin-a", "Twin A"), ("twin-b", "Twin B")):
+    pkg(tname.replace(" ", ""), [(tname.replace(" ", "") + "-1.0.0/install.sh", "#!/bin/sh\nexit 0\n")], "2024-09-01")
+    plugins[-1].update({"id": tid, "name": tname})
+    if tid == "twin-a": plugins[-1]["components"] = [{"uid": "TWN1", "name": tname}]   # only the first lists the uid, as machinemodule does (the Gen2 entry does not)
 import copy
 so = copy.deepcopy(plugins[0])   # an entry made for another MPC (the catalog's "devices"): hidden when the model is known and not listed
 so.update({"id": "sample-only", "name": "Sample only addin", "devices": ["mpc-sample"]})

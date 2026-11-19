@@ -74,7 +74,7 @@ typedef struct {
 #endif
 /* The version of this build, shown on the ABOUT page. The release workflow fails when its version input differs from this. */
 #ifndef PM_VERSION
-#define PM_VERSION "1.3.5"
+#define PM_VERSION "1.3.6"
 #endif
 #define WORK "/tmp/openmpc-pm"
 #define MAXPKG 1024   /* cards kept: the catalog (272 plugins on 2026-11-17), then local zips and unregistered folders; what does not fit is logged */
@@ -140,6 +140,7 @@ typedef struct {
     char kb_key[16];              /* that key */
     int theme, theme_applied, theme_can;   /* 0 dark, 1 light: the one wanted, the one in `Plugin Skins` at MPC's start, and whether the folder holds both skins */
     char own[300];                /* this plugin's own folder (its skins live there) */
+    int theme_seen, theme_boot;   /* theme_init ran once; the wanted theme differed from the skin in place at that first start (an update brings the packaged skin) */
     int tsel, reprompt;           /* which usable location new installs go to; CHANGE re-prepares and reopens the prompt */
     int sort;                     /* 0 last updated, 1 newest (first release), 2 most downloaded, 3 name */
     char azf;                     /* the A-Z filter: 0 none, '#' or 'A'..'Z' (the first letter or digit of the name) */
@@ -1555,6 +1556,7 @@ static void theme_init(mgr_t *m) {   /* after the device probe: where the settin
         m->theme = theme_read(m->dev->base, ".openmpcpm-theme", 1);   /* light is the default */
         snprintf(a, sizeof a, "%s/Plugin Skins", m->own);
         m->theme_applied = theme_read(a, ".theme", 1);   /* inside the skin itself: a reinstall of this plugin brings the packaged (dark) skin and this file together */
+        if (!m->theme_seen) { m->theme_seen = 1; m->theme_boot = m->theme_can && m->theme != m->theme_applied; }
     }
 }
 
@@ -2375,7 +2377,15 @@ static int add_local(const device_t *d, pkg_t *pkg, int n) {
             snprintf(p->kind, sizeof p->kind, "instrument");
             snprintf(p->dist, sizeof p->dist, "release");
             snprintf(p->latest, sizeof p->latest, "%s", mf.version[0] ? mf.version : "local");
-            snprintf(p->url, sizeof p->url, "file://%s", path);
+            {   /* percent-encode: libcurl rejects a raw space, and a drive's name (/media/MPC SD Card) is not the user's to choose */
+                size_t o = snprintf(p->url, sizeof p->url, "file://");
+                for (const char *q = path; *q && o + 4 < sizeof p->url; q++) {
+                    unsigned char ch = (unsigned char)*q;
+                    if (isalnum(ch) || strchr("-._~/", ch)) p->url[o++] = (char)ch;
+                    else o += snprintf(p->url + o, 4, "%%%02X", ch);
+                }
+                p->url[o] = 0;
+            }
             snprintf(p->sha, sizeof p->sha, "%s", sha);
             snprintf(p->channel, sizeof p->channel, "stable");
             snprintf(p->tags, sizeof p->tags, "local");
@@ -2462,6 +2472,16 @@ static void scan_installed(const device_t *d, pkg_t *pkg, int n) {
         char *sl = strrchr(folder, '/');
         if (!sl) continue;
         *sl = 0;
+        /* An entry whose plugin folder is gone from a drive that is there (deleted by hand or by another tool, the entry left behind)
+         * is not an install: counted as one, UPDATE put the plugin back where it was deleted instead of on the picked drive (Force,
+         * 2026-11-18). A drive that is not mounted (its Synths folder missing too) keeps its plugins listed as installed. */
+        if (!is_file(en->file)) {
+            char drv[256];   /* the Synths folder: what comes before "/<maker> - VST - <name>" (also in the SDK layout's ".../VST/x.so") */
+            snprintf(drv, sizeof drv, "%s", folder);
+            char *v = strstr(drv, " - VST - ");
+            while (v && v > drv && v[-1] != '/') v--;
+            if (v && v > drv + 1) { v[-1] = 0; if (is_dir(drv)) continue; }
+        }
         /* Akai's SDK layout keeps the binary one level down ("<maker> - VST - <name>/VST/<name>-arm64.so"): the plugin folder is the parent */
         if (!strstr((sl = strrchr(folder, '/')) ? sl : folder, " - VST - ") && sl && sl != folder) {
             *sl = 0;
@@ -2478,13 +2498,16 @@ static void scan_installed(const device_t *d, pkg_t *pkg, int n) {
             jobject(js, manifest_member, &mf);
             free(js);
         }
+        int idknown = 0;   /* the folder's own id names a catalog entry: it is that entry only (Machinemodule and its Gen2 build share a uid / name) */
+        for (int i = 0; i < n && mf.id[0] && !idknown; i++)
+            idknown = !is_addin(&pkg[i]) && !strcmp(mf.id, !strncmp(pkg[i].id, "local-", 6) ? pkg[i].id + 6 : pkg[i].id);
         for (int i = 0; i < n; i++) {
             pkg_t *p = &pkg[i];
             if (is_addin(p)) continue;
             /* a local zip's card is "local-<id>": it is the same plugin as the installed <id> (else it would offer Install forever, never Remove) */
             const char *pid = !strncmp(p->id, "local-", 6) ? p->id + 6 : p->id;
             int hit = mf.id[0] ? !strcmp(mf.id, pid) : !strcmp(en->name, p->name);
-            for (int c = 0; c < 4 && !hit; c++) hit = p->uids[c][0] && !strcasecmp(p->uids[c], en->uid);
+            for (int c = 0; c < 4 && !hit && !idknown; c++) hit = p->uids[c][0] && !strcasecmp(p->uids[c], en->uid);
             if (!hit || p->installed[0]) continue;
             snprintf(p->installed, sizeof p->installed, "%s", mf.version[0] ? mf.version : "?");
             snprintf(p->folder, sizeof p->folder, "%s", folder);
@@ -2708,8 +2731,8 @@ static void manifest_str(const char *dir, const char *key, char *out, size_t n) 
     if (!s) return;
     char *k = strstr(s, pat);
     if (k && (k = strchr(k + strlen(pat), ':')) && (k = strchr(k, '"'))) {
-        char *e = strchr(++k, '"');
-        if (e && (size_t)(e - k) < n) { memcpy(out, k, e - k); out[e - k] = 0; }
+        char dec[512];   /* decoded: "\u03c0ToniC" is the folder πToniC, not the literal backslash text */
+        if (jstr(k, dec, sizeof dec) && strlen(dec) < n) snprintf(out, n, "%s", dec);
     }
     free(s);
 }
@@ -2754,6 +2777,13 @@ static void prepare(mgr_t *m, pkg_t *q) {
     pthread_mutex_lock(&m->mu);
     for (int i = 0; i < m->npkg; i++) if (m->pkg[i].queued) q[nq++] = m->pkg[i];
     m->failed = 0;
+    /* packages left in WORK by an APPLY that failed or was cancelled take RAM that this one needs */
+    for (int i = 0; i < m->npkg; i++)
+        if (!m->pkg[i].queued && safe(m->pkg[i].id)) {
+            char st[300];
+            snprintf(st, sizeof st, "rm -rf '" WORK "/%s' '" WORK "/%s.zip'", m->pkg[i].id, m->pkg[i].id);
+            sh(st);
+        }
     m->downloading = 1;
     m->progress = 0;
     pthread_mutex_unlock(&m->mu);
@@ -2767,14 +2797,26 @@ static void prepare(mgr_t *m, pkg_t *q) {
         if (is_addin(p) && p->queued == Q_REMOVE) continue;   /* removed by the uninstall.sh in its folder: nothing to fetch */
         if (!p->url[0] || strlen(p->sha) != 64 || !safe(p->id) || !safe(p->name)) { err = "has no download in the catalog"; break; }
         snprintf(path, sizeof path, WORK "/%s.zip", p->id);
+        /* WORK is RAM (small on a Force): the zip and its unpacked copy must fit beside what is already unpacked. Said plainly
+         * instead of failing later as "could not be unpacked" (Force, 2026-11-18: REMOVE of every plugin filled /tmp) */
+        struct statvfs tv;
+        if (p->size > 0 && !statvfs(WORK, &tv) && (unsigned long long)tv.f_bavail * tv.f_frsize < (unsigned long long)p->size * 3 + (8ull << 20)) {
+            snprintf(why, sizeof why, "not enough temporary space (%lld MB free, needs about %lld MB): APPLY fewer changes at once",
+                     (long long)((unsigned long long)tv.f_bavail * tv.f_frsize >> 20), (p->size * 3 >> 20) + 8);
+            err = why;
+            break;
+        }
         if (download(m, p, path)) {
             snprintf(why, sizeof why, "download failed after 3 retries (%s)", m->fetch_err[0] ? m->fetch_err : "no connection error: the file was incomplete or its checksum did not match");
             err = why;
             break;
         }
         if ((err = inspect_zip(path))) break;
-        snprintf(cmd, sizeof cmd, "rm -rf '" WORK "/%s' && unzip -q -o '%s' -d '" WORK "/%s'", p->id, path, p->id);
-        if (sh(cmd)) { err = "could not be unpacked"; break; }
+        /* A removal runs only the package's top-level files (uninstall.sh, plugin_list.awk, mpc-plugin.json): the plugin folder inside
+         * is not unpacked. The zip goes once unpacked, so WORK holds one zip at a time, not every queued package's. */
+        snprintf(cmd, sizeof cmd, "rm -rf '" WORK "/%s' && unzip -q -o '%s' %s-d '" WORK "/%s'; r=$?; rm -f '%s'; exit $r",
+                 p->id, path, p->queued == Q_REMOVE ? "-x '*/*/*' " : "", p->id, path);
+        if (sh(cmd)) { snprintf(why, sizeof why, "could not be unpacked (temporary space full? %s)", WORK); err = why; break; }
         p->dir[0] = 0;   /* the zip holds one top folder with install.sh / uninstall.sh */
         snprintf(path, sizeof path, WORK "/%s", p->id);
         DIR *d = opendir(path);
@@ -2937,7 +2979,8 @@ static void prepare(mgr_t *m, pkg_t *q) {
                 snprintf(dirp, sizeof dirp, "%s/%s", target, strrchr(fo, '/') ? strrchr(fo, '/') + 1 : fo);   /* quoted below (shq): L'Cronx - VST - ... */
             char dq[1200];
             shq(dirp, dq, sizeof dq);
-            if (!synths[0] || !safe(synths) || (is_addin(p) && !m->dev->addins[0])) { err = "has no install location"; break; }
+            if (is_addin(p) && !m->dev->addins[0]) { err = "cannot be installed: this MPC has no writable " ADDINS_DIR " for addins"; break; }
+            if (!synths[0] || !safe(synths)) { err = "has no install location"; break; }
             if (is_addin(p) && p->queued == Q_INSTALL)
                 fprintf(f, "echo '-- install %s %s'\nitem '%s' '%s' install '%s' sh '%s/install.sh' -y -n -t '%s' && rm -rf '" WORK "/%s' '" WORK "/%s.zip'\n",
                         p->id, p->latest, p->id, dq, p->latest, p->dir, synths, p->id, p->id);
@@ -3025,6 +3068,7 @@ static void do_launch(mgr_t *m) {
 #endif
 }
 
+static int count_queued(const mgr_t *m);
 static void *worker(void *ud) {
     mgr_t *m = ud;
     mkdir(WORK, 0755);
@@ -3038,7 +3082,21 @@ static void *worker(void *ud) {
         m->busy = job;
         m->rev++;
         pthread_mutex_unlock(&m->mu);
-        if (job == J_REFRESH) do_refresh(m);
+        if (job == J_REFRESH) {
+            do_refresh(m);
+            /* An update brings the packaged (light) skin back while the saved choice may be dark: the swap is already queued, but nobody
+             * would see it. The first start after that prepares it and opens the restart prompt (CANCEL keeps it queued). */
+            pthread_mutex_lock(&m->mu);
+            int boot = m->theme_boot && theme_dirty(m) && count_queued(m) == 1 && !m->dev->problem[0] && !m->quit;
+            m->theme_boot = 0;
+            pthread_mutex_unlock(&m->mu);
+            if (boot) {
+                do_prepare(m);
+                pthread_mutex_lock(&m->mu);
+                if (m->ready) m->confirm = 1;
+                pthread_mutex_unlock(&m->mu);
+            }
+        }
         else if (job == J_PREPARE) do_prepare(m);
         else if (job == J_LAUNCH) do_launch(m);
         else if (job == J_PATCH) do_patch(m);
