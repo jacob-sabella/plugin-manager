@@ -2754,6 +2754,13 @@ static void prepare(mgr_t *m, pkg_t *q) {
     pthread_mutex_lock(&m->mu);
     for (int i = 0; i < m->npkg; i++) if (m->pkg[i].queued) q[nq++] = m->pkg[i];
     m->failed = 0;
+    /* packages left in WORK by an APPLY that failed or was cancelled take RAM that this one needs */
+    for (int i = 0; i < m->npkg; i++)
+        if (!m->pkg[i].queued && safe(m->pkg[i].id)) {
+            char st[300];
+            snprintf(st, sizeof st, "rm -rf '" WORK "/%s' '" WORK "/%s.zip'", m->pkg[i].id, m->pkg[i].id);
+            sh(st);
+        }
     m->downloading = 1;
     m->progress = 0;
     pthread_mutex_unlock(&m->mu);
@@ -2767,14 +2774,26 @@ static void prepare(mgr_t *m, pkg_t *q) {
         if (is_addin(p) && p->queued == Q_REMOVE) continue;   /* removed by the uninstall.sh in its folder: nothing to fetch */
         if (!p->url[0] || strlen(p->sha) != 64 || !safe(p->id) || !safe(p->name)) { err = "has no download in the catalog"; break; }
         snprintf(path, sizeof path, WORK "/%s.zip", p->id);
+        /* WORK is RAM (small on a Force): the zip and its unpacked copy must fit beside what is already unpacked. Said plainly
+         * instead of failing later as "could not be unpacked" (Force, 2026-11-18: REMOVE of every plugin filled /tmp) */
+        struct statvfs tv;
+        if (p->size > 0 && !statvfs(WORK, &tv) && (unsigned long long)tv.f_bavail * tv.f_frsize < (unsigned long long)p->size * 3 + (8ull << 20)) {
+            snprintf(why, sizeof why, "not enough temporary space (%lld MB free, needs about %lld MB): APPLY fewer changes at once",
+                     (long long)((unsigned long long)tv.f_bavail * tv.f_frsize >> 20), (p->size * 3 >> 20) + 8);
+            err = why;
+            break;
+        }
         if (download(m, p, path)) {
             snprintf(why, sizeof why, "download failed after 3 retries (%s)", m->fetch_err[0] ? m->fetch_err : "no connection error: the file was incomplete or its checksum did not match");
             err = why;
             break;
         }
         if ((err = inspect_zip(path))) break;
-        snprintf(cmd, sizeof cmd, "rm -rf '" WORK "/%s' && unzip -q -o '%s' -d '" WORK "/%s'", p->id, path, p->id);
-        if (sh(cmd)) { err = "could not be unpacked"; break; }
+        /* A removal runs only the package's top-level files (uninstall.sh, plugin_list.awk, mpc-plugin.json): the plugin folder inside
+         * is not unpacked. The zip goes once unpacked, so WORK holds one zip at a time, not every queued package's. */
+        snprintf(cmd, sizeof cmd, "rm -rf '" WORK "/%s' && unzip -q -o '%s' %s-d '" WORK "/%s'; r=$?; rm -f '%s'; exit $r",
+                 p->id, path, p->queued == Q_REMOVE ? "-x '*/*/*' " : "", p->id, path);
+        if (sh(cmd)) { snprintf(why, sizeof why, "could not be unpacked (temporary space full? %s)", WORK); err = why; break; }
         p->dir[0] = 0;   /* the zip holds one top folder with install.sh / uninstall.sh */
         snprintf(path, sizeof path, WORK "/%s", p->id);
         DIR *d = opendir(path);
