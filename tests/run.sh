@@ -546,6 +546,7 @@ grep -q "\"id\":\"new-os-only\"" /tmp/web-3101.out || { echo "min_os 3.10.1 must
 rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
 sh tests/devices/mpc-one.sh && sh tests/addins.sh
 grep -q "<h1>Plugin Manager</h1>" /tmp/web.out
+grep -q "href=\"https://github.com/open-mpc/plugin-manager\"" /tmp/web.out && grep -q "github.com/\${esc(c.repo)}" /tmp/web.out && grep -q "\"version\":\"" /tmp/web.out   # #13: the version, the project link, a GitHub link per plugin
 grep -q "^screen status: On your phone or computer: http://[0-9.]*:8790$" /tmp/web.out   # the address on the screen
 grep -q "404 Not Found" /tmp/web.out
 [ "$(grep -c "403 Forbidden" /tmp/web.out)" = 2 ]                  # no X-PM header; a foreign Origin
