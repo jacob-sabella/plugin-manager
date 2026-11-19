@@ -2874,20 +2874,35 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "SETTINGS='%s'; SNAP='" WORK "/snap'; RES='" WORK "/result'\nrm -rf \"$SNAP\"; mkdir -p \"$SNAP\"; : > \"$RES\"\n"
                    /* item ID FOLDER cmd...: snapshot the plugin folder and MPC.settings, run cmd; on failure put both back and say why (DESIGN 7) */
                    "item() {\n  id=$1; dir=$2; act=$3; ver=$4; shift 4; snap=''\n"
-                   /* a small folder is copied to RAM (WORK); a big one to a hidden sibling on its own drive, after a free-space check */
+                   /* a safety copy an earlier apply left (MPC power-cycled mid-copy, plugin-manager #46). Only a copy marked complete
+                    * (<snap>.done) is ever put back, and only when the plugin folder is gone; with the folder there it is just removed */
+                   "  if [ -n \"$dir\" ]; then old=\"$(dirname \"$dir\")/.pm-snap-$id\"\n"
+                   "    if [ -e \"$old\" ] && [ -d \"$dir\" ]; then rm -rf \"$old\" \"$old.done\"; echo \"removed the safety copy an earlier update left at $old\"\n"
+                   "    elif [ -e \"$old\" ] && [ -f \"$old.done\" ]; then mv \"$old\" \"$dir\" && rm -f \"$old.done\" && echo \"put $dir back from the safety copy an earlier update left\"\n"
+                   "    elif [ -e \"$old\" ]; then echo \"$id|fail|an earlier update was cut off and left an incomplete safety copy at $old\" >> \"$RES\"; return 1; fi\n"
+                   "  fi\n"
+                   /* a small folder is copied to RAM (WORK); a big one to a hidden sibling on its own drive, after a free-space check.
+                    * On its own drive the installer's staged copy needs as much room again, so twice the folder (plus 64 MB) must be free */
                    "  if [ -n \"$dir\" ] && [ -d \"$dir\" ]; then\n"
                    "    sz=$(du -sk \"$dir\" 2>/dev/null | cut -f1); sz=${sz:-0}\n"
-                   "    if [ \"$sz\" -le \"${PM_SNAP_KB:-49152}\" ]; then snap=\"$SNAP/$id.dir\"; else snap=\"$(dirname \"$dir\")/.pm-snap-$id\"; fi\n"
-                   "    if [ -e \"$snap\" ]; then echo \"$id|fail|an earlier update left a safety copy at $snap\" >> \"$RES\"; return 1; fi\n"
+                   "    if [ \"$sz\" -le \"${PM_SNAP_KB:-49152}\" ]; then snap=\"$SNAP/$id.dir\"; need=$((sz + 65536)); else snap=\"$(dirname \"$dir\")/.pm-snap-$id\"; need=$((2 * sz + 65536)); fi\n"
                    "    free=$(df -Pk \"$(dirname \"$snap\")\" 2>/dev/null | awk 'NR==2 {print $4}')\n"
-                   "    if [ \"${free:-0}\" -lt $((sz + 65536)) ]; then echo \"$id|fail|not enough free space to keep a safe copy\" >> \"$RES\"; return 1; fi\n"
-                   "    cp -a \"$dir\" \"$snap\" || { rm -rf \"$snap\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
+                   "    if [ \"${free:-0}\" -lt $need ]; then echo \"$id|fail|not enough free space to keep a safe copy\" >> \"$RES\"; return 1; fi\n"
+                   "    echo \"-- safety copy of $dir ($((sz / 1024)) MB), MPC starts again when the update is done\"\n"
+                   "    cp -a \"$dir\" \"$snap\" && : > \"$snap.done\" || { rm -rf \"$snap\" \"$snap.done\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
                    "  fi\n"
                    "  cp -p \"$SETTINGS\" \"$SNAP/$id.settings\" 2>/dev/null\n"
                    "  out=$(\"$@\" 2>&1); rc=$?\n  pidof MPC >/dev/null && quiesce   # an installer without -n started MPC again: MPC starts once, at the end\n"
-                   "  if [ $rc -eq 0 ]; then echo \"$out\"; echo \"$id|ok|$act $ver\" >> \"$RES\"; [ -n \"$snap\" ] && rm -rf \"$snap\"; rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
+                   "  if [ $rc -eq 0 ]; then echo \"$out\"; echo \"$id|ok|$act $ver\" >> \"$RES\"; [ -n \"$snap\" ] && rm -rf \"$snap\" \"$snap.done\"; rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
                    "  echo \"$out\"\n"
-                   "  if [ -n \"$dir\" ]; then rm -rf \"$dir\"; [ -n \"$snap\" ] && [ -d \"$snap\" ] && cp -a \"$snap\" \"$dir\" && rm -rf \"$snap\"; fi\n"
+                   /* roll back: the failed folder is moved aside (not deleted) until the safety copy is back in its place */
+                   "  if [ -n \"$snap\" ] && [ -f \"$snap.done\" ]; then\n"
+                   "    bad=\"$(dirname \"$dir\")/.pm-failed-$id\"; rm -rf \"$bad\"; [ -e \"$dir\" ] && mv \"$dir\" \"$bad\"\n"
+                   "    case $snap in \"$SNAP\"/*) cp -a \"$snap\" \"$dir\" ;; *) mv \"$snap\" \"$dir\" ;; esac\n"
+                   "    if [ $? -eq 0 ]; then rm -rf \"$bad\" \"$snap\" \"$snap.done\"\n"
+                   "    else rm -rf \"$dir\"; [ -e \"$bad\" ] && mv \"$bad\" \"$dir\"; echo \"-- $id: could not put the old folder back; the safety copy stays at $snap\"; fi\n"
+                   "  elif [ -n \"$dir\" ] && [ -z \"$snap\" ]; then rm -rf \"$dir\"   # a new install: nothing was there before\n"
+                   "  fi\n"
                    "  [ -f \"$SNAP/$id.settings\" ] && cp -p \"$SNAP/$id.settings\" \"$SETTINGS\"\n"
                    "  echo \"$id|fail|$(echo \"$out\" | tail -n 1 | tr '|' ' ')\" >> \"$RES\"; echo \"-- $id failed: rolled back\"; return 1\n}\n",
                 m->dev->state, m->dev->settings);
@@ -2987,10 +3002,13 @@ static void prepare(mgr_t *m, pkg_t *q) {
             else if (is_addin(p))
                 fprintf(f, "echo '-- remove %s'\nitem '%s' '%s' remove '' sh '%s/uninstall.sh' -y -n -t '%s'\n", p->id, p->id, dq, synths, synths);
             else if (p->queued == Q_INSTALL) {
-                fprintf(f, "echo '-- install %s %s'\nitem '%s' '%s' install '%s' sh '%s/install.sh' -y $(batch '%s/install.sh') -t '%s' && setstate '%s' '%s' && rm -rf '" WORK "/%s' '" WORK "/%s.zip'\n",
-                        p->id, p->latest, p->id, dq, p->latest, p->dir, p->dir, synths, p->id, p->latest, p->id, p->id);
-                if (m->dev->vst2 == 2 && dq[0])   /* the installer writes plugin-meta.xml; MPC 3.10.1 needs plugin.json beside it */
-                    fprintf(f, "[ -d '%s' ] && sh '" WORK "/vst2.sh' --json '%s'\n", dq, dq);
+                /* MPC 3.10.1 needs a plugin.json beside the plugin-meta.xml an older installer writes: written only after the install
+                 * succeeded (a failed one is rolled back and keeps the plugin.json it had, plugin-manager #46) */
+                int js = m->dev->vst2 == 2 && dq[0];
+                fprintf(f, "echo '-- install %s %s'\nif item '%s' '%s' install '%s' sh '%s/install.sh' -y $(batch '%s/install.sh') -t '%s'; then\n"
+                           "  setstate '%s' '%s'; rm -rf '" WORK "/%s' '" WORK "/%s.zip'\n%s%s%s%s%sfi\n",
+                        p->id, p->latest, p->id, dq, p->latest, p->dir, p->dir, synths, p->id, p->latest, p->id, p->id,
+                        js ? "  [ -d '" : "", js ? dq : "", js ? "' ] && sh '" WORK "/vst2.sh' --json '" : "", js ? dq : "", js ? "'\n" : "");
             } else {
                 fprintf(f, "echo '-- remove %s'\nitem '%s' '%s' remove '' sh '%s/uninstall.sh' -y $(batch '%s/uninstall.sh') -t '%s' && setstate '%s' '' && rm -rf '" WORK "/%s' '" WORK "/%s.zip'\n",
                         p->id, p->id, dq, p->dir, p->dir, synths, p->id, p->id, p->id);
