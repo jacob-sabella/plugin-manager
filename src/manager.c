@@ -140,6 +140,7 @@ typedef struct {
     char kb_key[16];              /* that key */
     int theme, theme_applied, theme_can;   /* 0 dark, 1 light: the one wanted, the one in `Plugin Skins` at MPC's start, and whether the folder holds both skins */
     char own[300];                /* this plugin's own folder (its skins live there) */
+    int wsel, wsel_on;            /* the data wheel's highlighted card (a position in the visible list) and whether the wheel has been used (#11) */
     int theme_seen, theme_boot;   /* theme_init ran once; the wanted theme differed from the skin in place at that first start (an update brings the packaged skin) */
     int tsel, reprompt;           /* which usable location new installs go to; CHANGE re-prepares and reopens the prompt */
     int sort;                     /* 0 last updated, 1 newest (first release), 2 most downloaded, 3 name */
@@ -3512,6 +3513,12 @@ static int is_button(const char *key) {
     return 0;
 }
 
+/* The wheel moves the highlight only over the plain card list: not in the details, the keyboard, an open dropdown or card menu, the restart prompt,
+ * or while the manager prepares or restarts (those own the input; a turn there changes nothing) */
+static int wheel_ok(const mgr_t *m, int busy) {
+    return m->loaded && !m->detail[0] && !m->kb && !m->menu_open && m->menu < 0 && !m->confirm && !busy;
+}
+
 static void mgr_set_param(void *inst, const char *key, const char *val) {
     mgr_t *m = inst;
     double v = atof(val);
@@ -3579,11 +3586,25 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
             m->sel = idx[k];
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         } else if (k < nv && !strcmp(key + 4, "act") && !busy) act(m, idx[k], "act");
+    } else if (!strcmp(key, "wsel")) {   /* the data wheel (#11): move the highlight over the cards, across pages; ignored while anything else has the input */
+        if (wheel_ok(m, busy)) {
+            int o = (int)(v + 0.5);
+            m->wsel = nv ? (o < 0 ? 0 : o >= nv ? nv - 1 : o) : 0;
+            m->wsel_on = nv > 0;
+            m->page = m->wsel / ROWS;
+        }
+    } else if (v >= 0.5 && !strcmp(key, "wsel_open")) {   /* the wheel's press: the highlighted plugin's details, as a tap on its card */
+        if (wheel_ok(m, busy) && m->wsel_on && m->wsel < nv) {
+            m->sel = idx[m->wsel];
+            m->menu = -1;
+            snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[m->wsel]].id);
+        }
     } else if (!strcmp(key, "tab") || !strcmp(key, "kind") || !strcmp(key, "sort")) {   /* option params: the index as a number
                                                                                        * (and how the host restores them) */
         int o = (int)(v + 0.5);
         if (key[0] == 't') m->tab = o; else if (key[0] == 'k') m->kindf = o; else m->sort = o < 0 || o > 3 ? 0 : o;
         m->page = 0;
+        m->wsel = m->wsel_on = 0;
         m->menu = -1;
         m->menu_open = 0;
         if (key[0] != 's') m->detail[0] = 0;   /* the sort, restored with the project, leaves things be */
@@ -3592,6 +3613,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         int r = key[4] - '1', k = m->page * ROWS + r;
         if (m->loaded && !m->detail[0] && k >= 0 && k < nv) {
             m->sel = idx[k];
+            m->wsel = k; m->wsel_on = 1;
             m->menu = -1;
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         }
@@ -3711,8 +3733,8 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
     } else if (key[0] == 'd' && key[1] == '_') {   /* d_act, d_more, d_reinstall, d_remove */
         int i = detail_of(m);
         if (i >= 0 && !busy) act(m, i, key + 2);
-    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; }   /* hidden by the details */
-    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; }
+    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; if (m->wsel_on) m->wsel -= ROWS; }   /* hidden by the details */
+    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; if (m->wsel_on) m->wsel = m->wsel + ROWS < nv ? m->wsel + ROWS : nv - 1; }   /* the highlight follows the page */
     else if (!strcmp(key, "refresh")) post(m, J_REFRESH);
     else if (!strcmp(key, "update_all") && !busy) {
         for (int i = 0; i < m->npkg; i++) if (has_update(&m->pkg[i]) && !m->pkg[i].queued) requeue(m, &m->pkg[i], Q_INSTALL);
@@ -3724,6 +3746,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         const char *f = key + 3;
         if (k < nv && !strcmp(f, "open")) {   /* the thumbnail */
             m->sel = idx[k];
+            m->wsel = k; m->wsel_on = 1;
             m->menu = -1;
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         } else if (k < nv && !busy) act(m, idx[k], f);
@@ -3745,6 +3768,10 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
     int d = detail_of(m);
     if (d < 0) m->detail[0] = 0;   /* gone from the catalog on a refresh */
     if (!strcmp(key, "display_rev")) snprintf(b, n, "%u", m->rev);
+    else if (!strcmp(key, "wsel")) snprintf(b, n, "%d", m->wsel_on && m->wsel < nv ? m->wsel : 0);   /* the clamped value: the host nudges from it */
+    else if (!strcmp(key, "wsel_open")) snprintf(b, n, "0");
+    else if (!strncmp(key, "hl", 2) && key[2] >= '1' && key[2] <= '0' + ROWS && !key[3])   /* the highlight frame of card row N */
+        snprintf(b, n, "%d", m->wsel_on && !m->detail[0] && !m->kb && m->wsel < nv && m->wsel / ROWS == m->page && m->wsel % ROWS == key[2] - '1');
     else if (!strcmp(key, "tab")) snprintf(b, n, "%d", m->tab);
     else if (!strcmp(key, "kind")) snprintf(b, n, "%d", m->kindf);
     else if (!strcmp(key, "sort")) snprintf(b, n, "%d", m->sort);

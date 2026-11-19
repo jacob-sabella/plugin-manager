@@ -108,6 +108,14 @@ rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir 
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one "Beta addin" 3 > /tmp/reg-noaddin.out || true
 grep -qF "this MPC has no writable /data/mpc-addins for addins" /tmp/reg-noaddin.out || { cat /tmp/reg-noaddin.out; echo "FAIL #5: the addin message"; exit 1; }
 ! grep -q "has no install location" /tmp/reg-noaddin.out || { echo "FAIL #5: the misleading message"; exit 1; }
+# #11: the data wheel moves a highlight over the cards across pages, its press opens the details, and an open view or menu keeps the input
+rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media; sh tests/devices/mpc-one.sh && sh tests/addins.sh
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins wheel > /tmp/reg-wheel.out
+for l in "start: hl=00000 wsel=0 page=1 / 3" "wsel 2: hl=00100 wsel=2" "wsel 7: hl=00100 wsel=7 page=2 / 3" "wsel 9999: wsel=12 page=3 / 3" \
+         "wsel -3: hl=10000 wsel=0 page=1 / 3" "page_next: hl=00010 wsel=8 page=2 / 3" "press: view=1 hl=00000" "in details: wsel=1" \
+         "back: view=0 hl=01000" "touch r4: hl=00010 wsel=3" "menu open: wsel=3" "kind changed: hl=00000"; do
+  grep -qxF -- "$l" /tmp/reg-wheel.out || { cat /tmp/reg-wheel.out; echo "FAIL #11: lacks: $l"; exit 1; }
+done
 echo "regress OK"
 fi # regress
 if want vst2; then
