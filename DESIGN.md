@@ -340,8 +340,8 @@ input (`wheel_ok`). `wsel_open` (a trigger) opens the highlighted plugin's detai
 the highlighted row; a touch on a card or thumbnail sets `wsel` too, the page buttons move it with the page, and a new tab/filter/sort clears it. The
 parameters are appended after the old ones (`params.lock`); `hl*` are named outside the `r<N>_` pattern so `make_rows.py` leaves them alone.
 Offline test: `wheel` (in `ONLY=regress`).
-**Not done, needs a device:** MPC must give the wheel hardware focus to `wsel` (a focusable control bound to it in the skin: the generator is
-`tools/shadow_skin.py` in mpc-vst-plugins, where controls get `acceptsHWFocus` and `Enter Pressed` bindings) and send the push as `wsel_open`.
+**Skin side (built, not seen on a device):** layout line `wheel ... key=wsel press=wsel_open` is a new kind in mpc-vst-plugins' `tools/shadow_skin.py` (branch `wheel-focus-11`): an 8 x 8 invisible control with hardware focus, `Data` = `wsel` (the wheel edits it), `Press` = `wsel_open`, and `Enter Pressed` -> `Toggle Switch` on `Press`. The Manager's skin builds with it (`TUI.json` checked); it needs that generator change merged first.
+**Needs a device:** that MPC really gives the wheel focus to it at start, and sends the push.
 Unknowns to check on a Live II/III: initial focus, touch/wheel switching, that the host nudges from the value `get_param("wsel")` returns,
 and that a wheel turn is not also delivered twice. Second feature, not started: pressing the focused screenshot in the details opens a larger image.
 Future (not started): filtering by the catalog's existing tags, for example hiding plugins that need the user's own files/ROMs (`requires_user_files`).
