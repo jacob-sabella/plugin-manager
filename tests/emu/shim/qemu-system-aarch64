@@ -1,0 +1,25 @@
+#!/bin/bash
+# Stands in front of QEMU for QEngine's launcher (QEMU_BIN points here). Probes (-accel help, -device help, ...) pass straight through.
+# A real launch (-kernel ...) is changed in three ways, so tests never write an instance's own disks and can snapshot the machine:
+#   - every raw drive becomes a qcow2 overlay in $PM_OVERLAY_DIR backed by that image (made on first use);
+#   - $PM_NETDEV_EXTRA is added to the user network (restrict=on, the fixture's guestfwd);
+#   - $PM_QEMU_APPEND is added at the end (-loadvm <tag>).
+real="${PM_QEMU_REAL:-/usr/bin/qemu-system-aarch64}"
+case " $* " in *" -kernel "*) ;; *) exec "$real" "$@" ;; esac
+[ -n "${PM_OVERLAY_DIR:-}" ] || exec "$real" "$@"
+mkdir -p "$PM_OVERLAY_DIR"
+args=()
+while [ $# -gt 0 ]; do
+    a=$1; shift
+    case "$a" in
+        if=none,file=*,format=raw,id=*)
+            f=${a#if=none,file=}; f=${f%%,format=raw,id=*}; id=${a##*,id=}
+            o="$PM_OVERLAY_DIR/$(basename "$f").qcow2"
+            [ -f "$o" ] || qemu-img create -q -f qcow2 -b "$f" -F raw "$o" >&2
+            a="if=none,file=$o,format=qcow2,id=$id" ;;
+        user,id=net0,*) a="$a${PM_NETDEV_EXTRA:-}" ;;
+    esac
+    args+=("$a")
+done
+# shellcheck disable=SC2086
+exec "$real" "${args[@]}" ${PM_QEMU_APPEND:-}

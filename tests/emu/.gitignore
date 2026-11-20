@@ -1,0 +1,5 @@
+build/
+state/
+results/
+out/
+__pycache__/

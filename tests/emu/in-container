@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# in-container NAME COMMAND...: run a harness command in its own pm-emu-host container (its own network namespace, so every VM and
+# fixture server can use the same ports) and no network: the guest can reach the fixture server and nothing else.
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"; name=$1; shift
+docker rm -f "$name" >/dev/null 2>&1 || true
+QE_NONET=1 QE_NAME="$name" QE_CWD="$here" exec "$here/qe" "$@"

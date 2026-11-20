@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# vm up INSTANCE STAGE [SNAPSHOT] | vm down | vm <sh|tap|mon|py> ...: one emulated MPC to work on by hand (see cli.py).
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+case "${1:-}" in
+  up)   docker rm -f pm-emu-vm >/dev/null 2>&1 || true
+        QE_NONET=1 QE_NAME=pm-emu-vm QE_DETACH=1 "$here/qe" python3 "$here/cli.py" "$@" >/dev/null
+        until docker logs pm-emu-vm 2>&1 | grep -q " up: \|Traceback\|Fail"; do sleep 2; docker ps -q --filter name=pm-emu-vm | grep -q . || break; done
+        docker logs pm-emu-vm 2>&1 | tail -n 5 ;;
+  down) docker rm -f pm-emu-vm >/dev/null 2>&1 || true ;;
+  *)    exec docker exec -w "$PWD" pm-emu-vm python3 "$here/cli.py" "$@" ;;
+esac
