@@ -266,6 +266,25 @@ def exfat_noexec_drive(t):
 
 
 @scenario
+def readonly_addins(t):
+    """/data/mpc-addins cannot be written: an addin is refused before MPC stops, with that as the reason; plugins still install."""
+    t.vm.sh("mkdir -p /data/mpc-addins && mount --bind /data/mpc-addins /data/mpc-addins && mount -o remount,ro,bind /data/mpc-addins")
+    t.fx.catalog(emu_probe=["1.0.0"])
+    st = t.refresh()
+    pid = t.vm.out("pidof MPC").strip()
+    t.queue("emu-addin")
+    st = t.prepare()
+    t.shot("refused")
+    t.eq(st.get("ready"), 0, "the addin install is not offered for a restart")
+    t.has(st.get("status", ""), "mpc-addins", "the message names the addins folder")
+    t.hasnt(st.get("status", ""), "no install location", "the message does not blame the install location (#5)")
+    t.eq(t.vm.out("pidof MPC").strip(), pid, "MPC kept running")
+    t.queue("emu-addin", "cancel")
+    res, lg = api_install(t, "emu-probe")
+    t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "a plugin still installs")
+
+
+@scenario
 def power_cut_mid_apply(t):
     """Power is lost while an update is keeping its safety copy (#46). After the reboot the plugin is as it was, and the update
     then goes through: what the cut left behind does not block it."""
