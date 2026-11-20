@@ -37,31 +37,33 @@ USER_DISK = "/dev/disk/by-id/virtio-pmuser"       # shim/qemu-system-aarch64 add
 FITTED = """[Unit]
 Description=The emulator's stand-in for the device tree flag of a fitted internal drive
 DefaultDependencies=no
-After=sysinit.target
-Before=acvs.service
+Before=sysinit.target local-fs-pre.target local-fs.target acvs.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c 'c=/sys/firmware/devicetree/base/chosen; [ -e "$c/inmusic,%s" ] && exit 0; mkdir -p /run/pm-chosen && cp $c/* /run/pm-chosen/ 2>/dev/null; : > "/run/pm-chosen/inmusic,%s"; mount --bind /run/pm-chosen $c'
-
-[Install]
-WantedBy=local-fs.target
 """
 
 
 def internal_drive(vm, where, flag):
     """The harness's own disk, formatted and mounted where this model keeps its internal drive, with the device tree flag for it; by
-    units, so that it is there again after a reboot (the power-cut test reboots)."""
+    units, so that it is there again after a reboot (the power-cut test reboots).
+    The units go into /etc on the root filesystem itself. On Gen1, /etc is an overlay whose upper layer is on /data and is mounted
+    during boot, after systemd has read its units: a unit written through it is not there at the next boot, and the stock unit for
+    the mount point (sdcard.mount, which waits for the flag) wins. So the root is reached through a bind mount, under the overlay."""
     unit = where.strip("/").replace("/", "-") + ".mount"
+    mnt = ("[Unit]\nDescription=The emulator's stand-in for the internal user drive\nRequires=pm-fitted.service\n"
+           "After=pm-fitted.service\nBefore=acvs.service\n\n[Mount]\nWhat=%s\nWhere=%s\nType=ext4\n" % (USER_DISK, where))
     vm.sh("mke2fs -q -t ext4 -F %s" % USER_DISK)
-    vm.sh("mount -o remount,rw / 2>/dev/null; true")      # Gen2: the root is read-only; only this VM's overlay is written
-    vm.write("/etc/systemd/system/" + unit, "[Unit]\nDescription=The emulator's stand-in for the internal user drive\nBefore=acvs.service\n\n"
-             "[Mount]\nWhat=%s\nWhere=%s\nType=ext4\n\n[Install]\nWantedBy=local-fs.target\n" % (USER_DISK, where))
-    vm.write("/etc/systemd/system/pm-fitted.service", FITTED % (flag, flag))
+    vm.sh("mount -o remount,rw /; mkdir -p /run/pm-root && mount --bind / /run/pm-root")   # only this VM's overlay of the image is written
+    vm.write("/run/pm-root/etc/systemd/system/" + unit, mnt)
+    vm.write("/run/pm-root/etc/systemd/system/pm-fitted.service", FITTED % (flag, flag))
+    vm.sh("cd /run/pm-root/etc/systemd/system && mkdir -p local-fs.target.wants sysinit.target.wants && "
+          "ln -sf ../%s local-fs.target.wants/%s && ln -sf ../pm-fitted.service sysinit.target.wants/pm-fitted.service" % (unit, unit))
     vm.sh(QENGINE_DROPIN)
-    vm.sh("systemctl daemon-reload && systemctl enable %s pm-fitted.service 2>&1; mount -o remount,ro / 2>/dev/null; "
-          "systemctl start %s pm-fitted.service && mkdir -p %s/Synths '%s/MPC Documents'" % (unit, unit, where, where))
+    vm.sh("umount /run/pm-root; mount -o remount,ro / 2>/dev/null; true")
+    vm.sh("systemctl daemon-reload && systemctl start pm-fitted.service %s && mkdir -p %s/Synths '%s/MPC Documents'" % (unit, where, where))
     return where + "/Synths"
 
 
