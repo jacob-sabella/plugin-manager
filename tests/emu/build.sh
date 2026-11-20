@@ -25,13 +25,13 @@ if [ ! -d "$skin/Plugin Skins.light" ] || [ ! -f "$pm/vst/build/params.h" ]; the
     MPC_VST="$MV" "$pm/vst/build_themes.sh" armv7 >/dev/null
 fi
 
-# the C: the working tree, or a commit's
+# the C and its parameter table (vst/build/params.h, from vst/params.json): the working tree's, or a commit's
 src="$pm"
 if [ -n "$ref" ]; then
     src="$out/pm/$label/src"; rm -rf "$src"; mkdir -p "$src"
-    git -C "$pm" archive "$ref" src | tar -xf - -C "$src"
-    mkdir -p "$src/vst/build"; cp "$pm/vst/build/params.h" "$src/vst/build/"   # the skin (and so params.h) is the working tree's
+    git -C "$pm" archive "$ref" src vst | tar -xf - -C "$src"
 fi
+python3 "$MV/tools/gen_vst.py" "$src/vst/vst.json" --params-h >/dev/null
 eval "$(python3 "$MV/tools/gen_vst.py" "$pm/vst/vst.json" --shell | grep -E '^(CFLAGS|CFLAGS_ARM|CFLAGS_A64|LIBS)=')"
 DEF="-DCATALOG_URL='\"$FIX/catalog.json\"' -DCATALOG_URL_FALLBACK='\"\"' -DPATCHES_URL='\"$FIX/patches.json\"' -DPATCHES_URL_FALLBACK='\"\"'"
 
@@ -48,6 +48,9 @@ package() {   # package <arch> <version>: release.py, as the release workflow do
     local arch=$1 ver=$2 o="$out/pm/$label/$1/$2"
     rm -rf "$o/skin" "$o/dist"; mkdir -p "$o/skin"
     cp -a --reflink=auto "$skin" "$o/skin/"
+    # the built skin is reused between builds, so the source tree's own edits to it are applied to this copy (a commit from before an
+    # edit existed gets the skin as it was then)
+    if [ -f "$src/vst/skin_taps.py" ]; then python3 "$src/vst/skin_taps.py" "$o/skin" >/dev/null; fi
     python3 "$MV/tools/release.py" --so "$o/openmpc_pm_g2.so" --skin "$o/skin/OpenMPC - VST - Plugin Manager" --entry "$pm/vst/build/pluginlist-entry.xml" \
         --version "$ver" --id plugin-manager-g2 --repo open-mpc/plugin-manager --license MIT --asset-name Plugin-Manager-G2 \
         --retire "OpenMPC - VST - Plugin Manager G2" --about "The Manager, built for the emulator tests." -o "$o/dist" >/dev/null
@@ -57,7 +60,7 @@ package() {   # package <arch> <version>: release.py, as the release workflow do
 for arch in armv7 aarch64; do
     for ver in $VA $VB; do
         z="$out/pm/$label/$arch/$ver/dist/Plugin-Manager-G2-$ver-mpc-$arch.zip"
-        if [ -f "$z" ] && [ -z "$(find "$src/src" "$pm/vst/build/params.h" "$skin" "$here/build.sh" -newer "$z" -print -quit)" ]; then echo "== Manager $label $ver $arch: up to date"; continue; fi
+        if [ -f "$z" ] && [ -z "$(find "$src/src" "$src/vst/params.json" "$src/vst/skin_taps.py" "$skin" "$here/build.sh" -newer "$z" -print -quit)" ]; then echo "== Manager $label $ver $arch: up to date"; continue; fi
         echo "== Manager $label $ver $arch"
         compile $arch $ver; package $arch $ver
     done

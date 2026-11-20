@@ -36,9 +36,9 @@ Host: x86_64 Linux, Docker, QEMU 10 in a container, TCG only (no KVM for ARM gue
 
 ## Found during the spike
 
-* A press held longer than about a quarter second toggles a button twice (queue then unqueue, or two pages forward). MPC sends the
-  button's value on touch-down and again on touch-up, and both the wrapper and the Manager tell a repeat from a new press by time
-  alone (250 ms). A quick tap is one event; a 0.3 s or 1.5 s press is two.
+* A press held longer than about a quarter second toggled a button twice (queue then unqueue, or two pages forward). The skin
+  binds every trigger to its parameter twice, a "Mouse Down" action and a Button component; MPC runs the first when the finger lands
+  and the second when it lifts, and the 250 ms double-press window only hides that for a quick tap. Fixed in `vst/skin_taps.py`.
 
 ## What the emulator cannot show
 

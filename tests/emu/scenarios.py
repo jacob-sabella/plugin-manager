@@ -118,8 +118,8 @@ def self_update(t):
 
 @scenario
 def long_press(t):
-    """A slow press on a button counts once. MPC sends the button on touch-down and again on touch-up; told apart by time alone,
-    a press held longer than a quarter second queued and then unqueued (or turned two pages)."""
+    """A slow press on a button counts once. The skin bound each trigger twice (an action on touch-down, a Button on release), so a
+    press held longer than the quarter-second double-press window queued and then unqueued, or turned two pages (vst/skin_taps.py)."""
     hits = t.vm.find("Emu Probe")
     if not t.check(hits, "the list shows Emu Probe"): return
     y = hits[0][1] + 16
