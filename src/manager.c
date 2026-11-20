@@ -3019,11 +3019,17 @@ static void prepare(mgr_t *m, pkg_t *q) {
                     if (strcmp(synths, m->dev->vdrv[k]) && safe(m->dev->vdrv[k])) fprintf(f, "rm -rf '%s%s'\n", m->dev->vdrv[k], fb);
             }
         }
-        if (theme_dirty(m)) {   /* MPC is stopped: copy the wanted skin over "Plugin Skins" (staged, then swapped; the old one goes last) */
+        if (m->theme_can && m->own[0] && safe(m->own)) {
+            /* MPC is stopped: copy the wanted skin over "Plugin Skins" (staged, then swapped; the old one goes last). Decided here, after the
+             * items, from the skin that is in place now: the Manager's own update has just brought the packaged (light) skin back, and a
+             * user who chose dark got light after every update until one more restart (FAQ, 2026-11). */
             const char *w = m->theme ? "light" : "dark";
-            fprintf(f, "echo '-- theme %s'\nT='%s'\nrm -rf \"$T/.skin.new\" \"$T/.skin.old\" && cp -a \"$T/Plugin Skins.%s\" \"$T/.skin.new\" && "
-                       "mv \"$T/Plugin Skins\" \"$T/.skin.old\" && mv \"$T/.skin.new\" \"$T/Plugin Skins\" && rm -rf \"$T/.skin.old\" && "
-                       "true\n", w, m->own, w);
+            fprintf(f, "T='%s'; W=%s\n"
+                       "if [ -d \"$T/Plugin Skins.$W\" ] && [ \"$(cat \"$T/Plugin Skins/.theme\" 2>/dev/null || echo light)\" != \"$W\" ]; then\n"
+                       "  echo \"-- theme $W\"\n"
+                       "  rm -rf \"$T/.skin.new\" \"$T/.skin.old\" && cp -a \"$T/Plugin Skins.$W\" \"$T/.skin.new\" && "
+                       "mv \"$T/Plugin Skins\" \"$T/.skin.old\" && mv \"$T/.skin.new\" \"$T/Plugin Skins\" && rm -rf \"$T/.skin.old\"\n"
+                       "fi\n", m->own, w);
         }
         /* MPC's skin image cache (a RAM disk only a reboot empties) grows ~400 MB per MPC start and, full, makes skins draw black (Live III, 2026-10-28).
          * MPC is stopped here, so nothing has the files open: empty it before MPC starts again, so the manager's own restarts do not fill it. */
