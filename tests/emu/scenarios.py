@@ -380,3 +380,29 @@ def catalog_retry(t):
     st = t.state(secs=45, until=lambda s: s.get("online") == 1 and not s.get("busy"), why="the Manager came back online on its own")
     t.eq((st.get("online"), len(st.get("plugins", [])) >= 4), (1, True), "online with the catalog, with nobody tapping REFRESH")
     t.has(t.fx.requests(), "DROPPED /catalog.json", "the fixture really dropped the request")
+
+
+@scenario
+def vst2_plugin_json(t):
+    """The MPC OS 3.10.1 path, as far as older firmware can run it: with VST2 Support on in MPC.settings the Manager installs into
+    "<drive>/VST2 Plugins" and leaves a plugin.json that names a binary which is there (#46). MPC itself, being 3.9.1 or 3.10.0, does
+    not load from that folder: only the Manager's side is checked."""
+    t.vm.sh("systemctl stop acvs; sed -i 's|</PROPERTIES>|  <VALUE name=\"Enhancements.VST2Support\" val=\"1\"/>\\n</PROPERTIES>|' %s; "
+            "rm -rf /tmp/openmpc-pm; systemctl start acvs" % t.settings)
+    t.fx.catalog(emu_probe=["1.0.0"])
+    st = t.reopen()
+    t.eq(st.get("vst2"), 2, "the Manager sees VST2 Support on")
+    drive = t.synths.rsplit("/", 1)[0]
+    folder = "%s/VST2 Plugins/%s" % (drive, PROBE)
+    t.has(t.vm.read(PM + "/device.txt"), "vst2: on  %s/VST2 Plugins" % drive, "device.txt")
+    if st.get("migrate"): t.vm.api("migrate?on=0", post=True)       # the offer to move the Manager itself: not what this is about
+    res, lg = api_install(t, "emu-probe")
+    t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install")
+    t.check(t.vm.exists(folder + "/emu_probe.so"), "the plugin's .so is in VST2 Plugins")
+    pj = t.vm.read(folder + "/plugin.json")
+    key = "file64" if t.arch == "aarch64" else "file32"
+    t.has(pj, '"%s": "emu_probe.so"' % key, "plugin.json names the binary for this CPU")
+    t.has(pj, '"uid": "0x456d5072"', "plugin.json has the plugin's uid")
+    t.has(lg, "wrote %s/plugin.json" % folder, "apply.log")
+    t.eq(leftovers(t, drive + "/VST2 Plugins"), [], "nothing left over in VST2 Plugins")
+    t.settings_ok()
