@@ -9,7 +9,7 @@ FIRMWARE_DIR="${FIRMWARE_DIR:-$(cd "$pm/../.." && pwd)/incubating/akai-firmware}
 MPC_VST="${MPC_VST:-$(cd "$pm/../.." && pwd)/open-mpc}"
 docker image inspect pm-emu-host >/dev/null 2>&1 || docker build -q -t pm-emu-host "$here" >/dev/null
 tty=; [ -t 0 ] && tty=-it
-pass=(); for v in SERIAL QEMU_AUDIO QEMU_EXTRA_ARGS KERNEL_EXTRA_ARGS MEM SMP ACCEL CPU SSH_PORT VNC_DISPLAY SERIAL_PORT MONITOR_PORT AUDIODEV_BACKEND; do [ -z "${!v+x}" ] || pass+=(-e "$v"); done
+pass=(); for v in SERIAL QEMU_AUDIO QEMU_EXTRA_ARGS KERNEL_EXTRA_ARGS MEM SMP ACCEL CPU SSH_PORT VNC_DISPLAY SERIAL_PORT MONITOR_PORT AUDIODEV_BACKEND PM_FIRMWARE_SHA256 PM_PRODUCT_CODE PM_QENGINE_REF; do [ -z "${!v+x}" ] || pass+=(-e "$v"); done
 mkdir -p /tmp/pm-emu-home; printf 'root:x:0:0:root:/root:/bin/sh\nemu:x:%s:%s:emu:/tmp/pm-emu-home:/bin/sh\n' "$(id -u)" "$(id -g)" > /tmp/pm-emu-home/passwd   # ssh wants a name for the uid
 :   # /tmp is shared: QEngine bind-mounts scripts it writes there into its builder containers
 exec docker run --rm $tty ${QE_HOSTNET:+--network host} ${QE_NONET:+--network none} -u "$(id -u):$(id -g)" --group-add "$(stat -c %g /var/run/docker.sock)" \
