@@ -135,6 +135,7 @@ typedef struct {
     int vis_n, vis_idx[MAXPKG];
     int confirm;                  /* the restart prompt is open (the second APPLY); only shown while ready */
     long long theme_t, tap_t;     /* ms of the last accepted theme press / button press (monotonic) */
+    int retry_n; long long retry_at;   /* the catalog could not be reached: tries made on their own, and when the next one is due (monotonic ms, 0: none) */
     char tap_key[32];             /* the button of that press */
     long long kb_t;               /* ms of the last accepted keyboard key (monotonic) */
     char kb_key[16];              /* that key */
@@ -2716,6 +2717,11 @@ static void do_refresh(mgr_t *m) {
     for (int i = 0; i < l.n; i++) if (!strcmp(tmp[i].id, sel)) m->sel = i;
     m->online = !offline;
     m->loaded = 1;
+    /* Unreachable: try again on its own, three times (5, 15 and 40 s later). MPC opens the last project while Wi-Fi is still joining,
+     * and the Manager then stayed offline until someone found REFRESH. */
+    static const int again[] = {5000, 15000, 40000};
+    if (offline == 1 && m->retry_n < 3) m->retry_at = mono_ms() + again[m->retry_n++];
+    else { m->retry_at = 0; if (!offline) m->retry_n = 0; }
     m->disk_used = used;
     snprintf(m->disk_free, sizeof m->disk_free, "%s", freebuf);
     if (m->dev->problem[0]) {
@@ -3159,7 +3165,20 @@ static void *worker(void *ud) {
     pthread_mutex_lock(&m->mu);
     m->job = J_REFRESH;
     for (;;) {
-        while (!m->quit && m->job == J_NONE) pthread_cond_wait(&m->cv, &m->mu);
+        while (!m->quit && m->job == J_NONE) {
+            if (!m->retry_at) { pthread_cond_wait(&m->cv, &m->mu); continue; }
+            long long left = m->retry_at - mono_ms();
+            if (left <= 0) {   /* due: only while nothing is queued or being answered, so a retry never pulls the list from under a choice */
+                m->retry_at = 0;
+                if (!m->online && !m->ready && !m->confirm && !count_queued(m)) m->job = J_REFRESH;
+                continue;
+            }
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_sec += left / 1000; ts.tv_nsec += (left % 1000) * 1000000L;
+            if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+            pthread_cond_timedwait(&m->cv, &m->mu, &ts);
+        }
         if (m->quit) break;
         int job = m->job;
         m->job = J_NONE;
