@@ -945,6 +945,23 @@ static int good_target(const char *loc) {
 static int loc_target_index(const mgr_t *m, const char *path);   /* below, with the other target helpers */
 static int ntargets(const mgr_t *m);
 
+/* A mount table entry for exactly this path: the path is a drive of its own, not a folder on another. */
+static int own_mount(const char *path) {
+#ifdef FS_ANY
+    FILE *f = fopen(!access("/tmp/pm-mounts", R_OK) ? "/tmp/pm-mounts" : "/proc/mounts", "r");
+#else
+    FILE *f = fopen("/proc/mounts", "r");
+#endif
+    char dev[128], mnt[256];
+    int found = 0;
+    while (f && !found && fscanf(f, "%127s %255s %*s %*s %*d %*d", dev, mnt) == 2) {
+        mount_unescape(mnt);
+        found = !strcmp(mnt, path);
+    }
+    if (f) fclose(f);
+    return found;
+}
+
 static int mount_of(const char *path, char *fs, size_t nf, int *rw, int *exec) {
 #ifdef FS_ANY
     FILE *f = fopen(!access("/tmp/pm-mounts", R_OK) ? "/tmp/pm-mounts" : "/proc/mounts", "r");
@@ -2022,10 +2039,15 @@ static void probe_device(device_t *d) {
             if (internal) roots[nr++] = lroot[i];
         }
         roots[nr++] = "/nvme"; roots[nr++] = "/storage"; roots[nr++] = "/media/az01-internal"; roots[nr++] = "/sdcard";
+        /* On a unit with a content drive of its own (Key 37: /storage, also /media/acvs-content) MPC does not scan the data partition's
+         * VST2 Plugins: on a Key 37 on 3.10.1.12 (2026-11-20) a plugin there was never opened, the one in /storage was read at start.
+         * With /storage full the Manager put plugins there, and they never showed up. Where there is no such drive it stays a candidate. */
+        int content_drive = own_mount("/storage") || own_mount("/nvme") || own_mount("/media/acvs-content");
         for (int i = 0; i < nr && !d->target[0]; i++) {
             char fs[32] = "", vd[220];
             int rw = 0, ex = 0;
             struct statvfs sv;
+            if (content_drive && !strcmp(roots[i], "/media/az01-internal")) continue;
             if (!is_dir(roots[i]) || !safe(roots[i]) || !mount_of(roots[i], fs, sizeof fs, &rw, &ex) || !rw) continue;
             if (!strcmp(fs, "tmpfs") || !strcmp(fs, "ramfs") || !strcmp(fs, "devtmpfs") || !strcmp(fs, "squashfs") || !strcmp(fs, "erofs")
                 || !strcmp(fs, "iso9660") || !strcmp(fs, "cramfs")) continue;
