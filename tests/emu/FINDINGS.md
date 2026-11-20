@@ -15,6 +15,7 @@ Manager's embedded copy of `vst2_migrate.sh` was regenerated from it, and the em
 | #46: plugin.json rewritten after a failed item | the Manager unlisted after a failed update | `tests/run.sh` vst2 |
 | #46: plugin.json naming a binary that is not in the folder | same | `tests/run.sh` vst2 (script fix in mpc-vst-plugins) |
 | MPC OS 3.10.1: only internal drives tried when no Synths folder is usable | "No install location" with a usable SSD attached (the Force report) | `tests/devices/force-3101-external-only` |
+| MPC OS 3.10.1: with the content drive full, plugins went to the data partition (`/media/az01-internal/VST2 Plugins`), which MPC does not scan on a unit with a content drive | a plugin installed and never listed (Key 37, 3.10.1.12) | emulator `full_disk` on Gen1 and Gen2 3.10.1; `tests/devices/key37-3101-storage-full` |
 | A full install drive turned everything off, removals included | "None of MPC's 1 Synths folders can take a plugin", and no way to free space from the Manager | emulator `full_disk` (Manager, and `uninstall.sh` in mpc-vst-plugins) |
 | An addin was offered with `/data/mpc-addins` read-only | a pointless restart, then a rollback | emulator `readonly_addins` |
 | One failed catalog fetch left the Manager offline | offline after a boot until REFRESH is tapped | emulator `catalog_retry` |
