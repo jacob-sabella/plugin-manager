@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Offline tests in the gcc:12 Docker image (needs network: they read the live catalog and download one zip).
+# Offline tests in the gcc:12 Docker image, which runs on a network with no route out: the catalog the fake devices browse is tests/catalog-snapshot.json
+# (a frozen extract of the live one; tests/snapshot_catalog.py refreshes it) and every download is a local stand-in (tests/fixture.py).
 #   ONLY=<section> tests/run.sh   one section (ONLY=devices:2/4: a quarter of the fake devices, as CI runs them) (devices addins links regress vst2 pick theme safety arch web) in a minute or two; no ONLY: everything (about 9 minutes)
 #   tests/run.sh            the wrapper host test, each fake device in tests/devices/, then the addin flow against
 #                           an offline fixture (tests/fixture.py: three addin packages and a file:// catalog)
@@ -11,16 +12,20 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 MV="${MPC_VST:-$here/../..}"
 python3 "$MV/tools/gen_vst.py" "$here/vst/vst.json" --params-h >/dev/null
 MPC_VST="$MV" python3 "$here/tests/fixture.py"
-docker run --rm -e ONLY -e TRACE -e DEV -v "$here":/p -v "$MV":/mv:ro -w /p gcc:12 bash -c '
+# an internal network: the container has an address (the web page tests read it) and no route out
+NET=pm-tests-offline
+docker network inspect $NET >/dev/null 2>&1 || docker network create --internal $NET >/dev/null
+docker run --rm --network $NET -e ONLY -e TRACE -e DEV -v "$here":/p -v "$MV":/mv:ro -w /p gcc:12 bash -c '
 set -eo pipefail; [ -z "$TRACE" ] || set -x
 SAN="-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1"
 want() { [ -z "$ONLY" ] || [ "${ONLY%%:*}" = "$1" ]; }   # ONLY=devices:2/4 runs every 4th fake device from the 2nd (CI shards)   # ONLY=safety: just that section (devices, addins, links, pick, theme, safety, arch, web)
 export PM_TAPMS=40   # the double-tap window, short (FS_ANY builds only)
 export PM_GLIBC=2.39   # a Gen2 / MPC OS 3.x glibc: the container has 2.36, which reads as OS 2.x and refused the live catalog packages (a 120 s wait per device)
-gcc $SAN -std=gnu11 -w -Ivst/build src/manager.c /mv/tools/host_test.c /mv/wrapper/vst2_wrap.c -lpthread -ldl -lm -o /tmp/host_test
+LIVE="-DCATALOG_URL=\"file:///p/vst/build/tests/catalog-live.json\" -DCATALOG_URL_FALLBACK=\"\" -DPATCHES_URL=\"file:///p/vst/build/tests/patches-live.json\" -DPATCHES_URL_FALLBACK=\"\""   # "the catalog": the snapshot
+gcc $SAN $LIVE -std=gnu11 -w -Ivst/build src/manager.c /mv/tools/host_test.c /mv/wrapper/vst2_wrap.c -lpthread -ldl -lm -o /tmp/host_test
 if want devices; then
 (cd /tmp && ./host_test | tail -n 1)
-gcc $SAN -DFS_ANY=1 -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive
+gcc $SAN -DFS_ANY=1 $LIVE -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive
 SHARD=; case "$ONLY" in devices:*/*) SHARD="${ONLY#devices:}";; esac
 n=0
 for dev in tests/devices/${DEV:-*}.sh; do
@@ -576,8 +581,8 @@ grep -q "\"targets\":\[{\"name\":" /tmp/web.out && grep -q "^no such drive" /tmp
 grep -q "409 Conflict" /tmp/web.out && grep -q "^unknown plugin" /tmp/web.out && grep -q "^nothing queued" /tmp/web.out
 grep -q "async function load" /tmp/web.out
 [ "$(grep -c "GET /api/state:" /tmp/web.out)" = 3 ] && ! grep -q "no answer" /tmp/web.out   # the second instance answered after the first closed
-echo "-- ROM uploads (live catalog: MPC Plaits on the fake MPC One, with user_files rules added)"
-gcc $SAN -DFS_ANY=1 -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive_web
+echo "-- ROM uploads (the catalog snapshot: MPC Plaits on the fake MPC One, with user_files rules added)"
+gcc $SAN -DFS_ANY=1 $LIVE -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive_web
 rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
 sh tests/devices/mpc-one.sh
 P="/media/az01-internal/Synths/poloq - VST - MPC Plaits"
