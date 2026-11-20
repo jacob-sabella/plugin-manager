@@ -870,12 +870,26 @@ static int internal_device(const char *path) {
     return !strncmp(best_dev, "/dev/nvme", 9) || !strncmp(best_dev, "/dev/mmcblk0", 12) || !strncmp(best_dev, "/dev/loop", 9);
 }
 
+/* How many of MPC's Synths folders are refused only because their drive is full: the usual reason installing stops working on a
+ * device that worked (the banner said "None of MPC's 1 Synths folders can take a plugin", which reads as a broken setup). */
+static const char *bad_target(const char *path, char *why, size_t n);
+static int full_locations(const device_t *d) {
+    int k = 0;
+    char why[200];
+    for (int i = 0; i < d->nloc; i++) {
+        const char *bad = bad_target(d->loc[i], why, sizeof why);
+        k += bad && !strncmp(bad, "under ", 6);
+    }
+    return k;
+}
+
 /* The banner and the status line for a `problem` (short: the banner is 590 px of 23 px text): what is wrong, in plain words. The reasons per
  * location are in device.txt. */
 static void problem_words(const device_t *d, char *out, size_t n) {
     const char *p = d->problem;
     if (!strcmp(p, "No MPC.settings")) snprintf(out, n, "No MPC.settings found: nothing can be installed");
     else if (!strcmp(p, "No install location") && !d->nloc) snprintf(out, n, "MPC lists no Synths folder to install into");
+    else if (!strcmp(p, "No install location") && full_locations(d)) snprintf(out, n, "Drive full (under 64 MB free): remove something to install");
     else if (!strcmp(p, "No install location")) snprintf(out, n, "None of MPC's %d Synths folders can take a plugin", d->nloc);
     else if (!strncmp(p, "No ", 3)) snprintf(out, n, "This MPC lacks %s, which the manager needs", p + 3);
     else snprintf(out, n, "%s", p);
@@ -3334,6 +3348,15 @@ static int installs_queued(const mgr_t *m) {   /* a plugin or addin will be writ
     return 0;
 }
 
+static int count_queued(const mgr_t *m);
+/* May APPLY run? Not with a device problem, except that "No install location" (every Synths folder full, read-only, noexec) only
+ * stops installs: a removal frees the space that turned installing off, and could not be applied (emulator, full drive, 2026-11). */
+static int can_apply(const mgr_t *m) {
+    if (!count_queued(m)) return 0;
+    if (!m->dev->problem[0]) return 1;
+    return !strcmp(m->dev->problem, "No install location") && !installs_queued(m);
+}
+
 static int count_queued(const mgr_t *m) {
     int n = theme_dirty(m) + m->migrate + m->nregq + m->clearcache;   /* a theme change (or the move to VST2 Plugins) is applied like an install: stop MPC, ..., start MPC */
     for (int i = 0; i < m->npkg; i++) n += m->pkg[i].queued != 0;
@@ -3802,7 +3825,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         for (int i = 0; i < m->npkg; i++) if (has_update(&m->pkg[i]) && !m->pkg[i].queued) requeue(m, &m->pkg[i], Q_INSTALL);
     } else if (!strcmp(key, "apply") && !busy) {
         if (m->ready) m->confirm = 1;   /* restart only from the prompt */
-        else if (count_queued(m) && !m->dev->problem[0]) post(m, J_PREPARE);
+        else if (can_apply(m)) post(m, J_PREPARE);
     } else if (key[0] == 'r' && key[1] >= '1' && key[1] <= '0' + ROWS && key[2] == '_' && !m->detail[0]) {
         int k = m->page * ROWS + key[1] - '1';
         const char *f = key + 3;
@@ -4005,7 +4028,7 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
         snprintf(b, n, "%d", m->downloading ? 1 + (int)(m->progress * 19 + 0.5) : 0);
     else if (!strcmp(key, "upd_all")) snprintf(b, n, "%d", upd > 0 && !busy);
     else if (!strcmp(key, "apply_state"))   /* 0 off, 1 apply, 2 preparing, 3 ready (restart), 4 retry */
-        snprintf(b, n, "%d", busy ? 2 : m->ready ? 3 : m->failed && q ? 4 : q && !m->dev->problem[0] ? 1 : 0);
+        snprintf(b, n, "%d", busy ? 2 : m->ready ? 3 : m->failed && q && can_apply(m) ? 4 : can_apply(m) ? 1 : 0);
     else if (!strncmp(key, "card", 4) && key[4] >= '1' && key[4] <= '0' + ROWS) {   /* card<r>_1: the name, and its selection */
         int k = m->page * ROWS + key[4] - '1', i = k < nv && d < 0 ? idx[k] : -1;
         if (strstr(key, "_on")) snprintf(b, n, "%d", i >= 0 && i == m->sel);

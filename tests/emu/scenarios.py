@@ -266,6 +266,44 @@ def exfat_noexec_drive(t):
 
 
 @scenario
+def full_disk(t):
+    """The install drive fills up: the Manager says the drive is full, a plugin can still be removed to make room, MPC.settings stays
+    whole, and installing works again once there is room."""
+    folder = "%s/%s" % (t.synths, PROBE)
+    t.fx.catalog(emu_probe=["1.0.0"])
+    t.refresh()
+    res, lg = api_install(t, "emu-probe")
+    t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install while there is room")
+    t.reopen()
+    t.vm.sh("dd if=/dev/zero of='%s/fill.bin' bs=1M 2>/dev/null; sync; true" % t.synths, timeout=900)
+    t.eq(t.vm.out("df -Pk '%s' | awk 'NR==2 {print $4}'" % t.synths).strip(), "0", "free KB on the install drive once filled")
+    st = t.refresh()
+    t.shot("full")
+    t.has(st.get("status", "").lower(), "full", "the Manager's message for a full drive")
+    t.eq(t.plugin("emu-addin", st).get("state"), "disabled", "installs are turned off")
+    # removing is how the user makes room: it must still go through
+    t.queue("emu-probe", "remove")
+    st = t.prepare()
+    if t.check(st.get("ready"), "a removal can be applied on a full drive (status: %s)" % st.get("status")):
+        t.launch()
+        res, lg = t.wait_done()
+        t.eq(res.get("emu-probe", ("",))[0], "ok", "result of the removal on a full drive")
+        t.check(not t.vm.exists(folder), "the plugin's folder is gone")
+        t.hasnt(t.settings_text(), "emu_probe.so", "MPC.settings after the removal")
+        t.reopen()
+    t.settings_ok()
+    t.has(t.settings_text(), "openmpc_pm_g2.so", "MPC.settings still lists the Manager")
+    t.eq(leftovers(t, t.synths), [], "nothing left over")
+    t.vm.sh("rm -f '%s/fill.bin'; sync" % t.synths)
+    st = t.refresh()
+    t.eq(st.get("problem"), "", "no problem once there is room")
+    if t.plugin("emu-probe", st).get("state") == "install":
+        res, lg = api_install(t, "emu-probe")
+        t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of an install once there is room")
+    t.settings_ok()
+
+
+@scenario
 def readonly_addins(t):
     """/data/mpc-addins cannot be written: an addin is refused before MPC stops, with that as the reason; plugins still install."""
     t.vm.sh("mkdir -p /data/mpc-addins && mount --bind /data/mpc-addins /data/mpc-addins && mount -o remount,ro,bind /data/mpc-addins")
