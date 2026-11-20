@@ -263,3 +263,50 @@ def exfat_noexec_drive(t):
     t.eq(r.get("usable"), 0, "listed by MPC, the noexec drive is still not usable")
     t.eq([x["path"] for x in st["targets"]], [t.synths], "the install targets with the drive listed")
     t.has(t.vm.read(PM + "/device.txt"), "noexec", "device.txt says why")
+
+
+@scenario
+def power_cut_mid_apply(t):
+    """Power is lost while an update is keeping its safety copy (#46). After the reboot the plugin is as it was, and the update
+    then goes through: what the cut left behind does not block it."""
+    folder = "%s/%s" % (t.synths, PROBE)
+    t.fx.catalog(emu_probe=["1.0.0"])
+    t.refresh()
+    res, lg = api_install(t, "emu-probe")
+    t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install")
+    # the user's own files make the folder too big for a copy in memory: the safety copy goes on the drive, which takes a while
+    t.vm.sh("dd if=/dev/zero of='%s/user.bin' bs=1M count=230 2>/dev/null; sync" % folder, timeout=600)
+    t.fx.catalog()
+    st = t.reopen()
+    t.eq(t.plugin("emu-probe", st).get("state"), "update", "the update is offered")
+    t.queue("emu-probe")
+    st = t.prepare()
+    if not t.check(st.get("ready"), "the update is prepared: %s" % st.get("status")): return
+    t.launch()
+    end = time.time() + 240; seen = []
+    while time.time() < end and not seen:
+        seen = [x for x in leftovers(t, t.synths) if x.startswith(".pm-s")]
+        if not seen: time.sleep(0.5)
+    if not t.check(seen, "a safety copy was being made on the drive"): return
+    time.sleep(1.5)
+    t.vm.sh("sync", check=False)          # what was copied so far is on the disk, as on a card that was written for a minute
+    t.vm.kill()
+    log("%s: power cut with %s in place" % (t.vm.instance, seen))
+    t.vm.start()
+    end = time.time() + 300
+    while t.vm.sh("pidof MPC", check=False)[0] != 0:
+        if time.time() > end: raise Fail("MPC did not start after the power cut")
+        time.sleep(3)
+    time.sleep(15)
+    left = [x for x in leftovers(t, t.synths) if x.startswith(".pm-s")]
+    t.check(left, "the cut left a partial safety copy behind (%s)" % left)
+    t.has(t.vm.read(folder + "/mpc-plugin.json"), '"version": "1.0.0"', "the plugin's folder after the cut")
+    t.settings_ok()
+    st = t.reopen()
+    p = t.plugin("emu-probe", st)
+    t.eq((p.get("installed"), p.get("state")), ("1.0.0", "update"), "after the reboot the Manager sees 1.0.0 and offers the update")
+    res, lg = api_install(t, "emu-probe", secs=900)
+    t.eq(res.get("emu-probe"), ("ok", "install 1.0.1"), "result of the update after the power cut")
+    t.has(t.vm.read(folder + "/mpc-plugin.json"), '"version": "1.0.1"', "the folder's manifest")
+    t.eq(leftovers(t, t.synths), [], "nothing left over")
+    t.settings_ok()
