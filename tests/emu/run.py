@@ -50,6 +50,7 @@ class T:
     def screen_shows(self, *texts, name="screen"):
         """The screen shows each text (OCR of a capture that is kept)."""
         import ocr
+        self.vm.settle()
         ws = ocr.words(self.shot(name))
         for t in texts:
             self.check(ocr.find(None, t, ws), "the screen shows %r (%s)" % (t, name))
@@ -69,6 +70,18 @@ class T:
         self.vm.api("refresh", post=True)
         time.sleep(1)
         return self.state(secs=60, until=lambda s: s.get("loaded") == 1 and not s.get("busy"), why="catalog reloaded")
+
+    def tap_state(self, pid, x, y, want, hold=0.08):
+        """Tap at (x, y) on a still screen, then the plugin's state once the guest has dealt with the tap: the screen has settled
+        and the state has held for two reads in a row (a press counted twice shows as one state and then the other)."""
+        self.vm.settle()
+        self.vm.tap(x, y, hold=hold, after=0.3)
+        self.vm.settle()
+        end = time.time() + emu.slow(10); last = None
+        while True:
+            got = self.plugin(pid).get("state")
+            if got == last and (got == want or time.time() > end) or time.time() > end + emu.slow(10): return got
+            last = got; time.sleep(1)
 
     def queue(self, pid, do="install"):
         self.vm.api("queue?id=%s&do=%s" % (pid, do), post=True)
@@ -113,7 +126,7 @@ class T:
 
     def reopen(self):
         """After MPC restarted: a new project with the Manager on a track again."""
-        prepare.open_manager(self.vm)
+        prepare.open_manager(self.vm, keep=self.out)
         return self.state(secs=90, until=lambda s: s.get("loaded") == 1 and not s.get("busy"), why="the Manager loaded its catalog")
 
     def keep(self, *names):

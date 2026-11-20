@@ -34,11 +34,16 @@ def plugin_install_update_remove(t):
     st = t.refresh()
     t.eq(t.plugin("emu-probe", st).get("latest"), "1.0.0", "the catalog offers 1.0.0")
     # the rows are sorted newest first: Emu Probe is the first row once only it and older entries are on offer; find it by its text
+    t.vm.settle()
     hits = t.vm.find("Emu Probe")
-    if t.check(hits, "the list shows Emu Probe"):
-        t.vm.tap(1128, hits[0][1] + 16)       # its INSTALL button, on the row's right
-    st = t.state(secs=10, until=lambda s: t.plugin("emu-probe", s).get("state") == "q_install", why="the tap queued the install")
+    if not t.check(hits, "the list shows Emu Probe"): return
+    got = t.tap_state("emu-probe", 1128, hits[0][1] + 16, "q_install")      # its INSTALL button, on the row's right
+    if got == "install":                      # the tap was not taken (the guest was busy): once more, on the screen as it is now
+        log("    the tap on INSTALL did not queue the install; tapping again")
+        hits = t.vm.find("Emu Probe")
+        if hits: got = t.tap_state("emu-probe", 1128, hits[0][1] + 16, "q_install")
     t.shot("queued")
+    if not t.eq(got, "q_install", "the tap queued the install"): return
     res, lg = t.apply()
     t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install")
     t.check(t.vm.exists(folder + "/emu_probe.so"), "the plugin's .so is in its folder")
@@ -120,13 +125,13 @@ def self_update(t):
 def long_press(t):
     """A slow press on a button counts once. The skin bound each trigger twice (an action on touch-down, a Button on release), so a
     press held longer than the quarter-second double-press window queued and then unqueued, or turned two pages (vst/skin_taps.py)."""
+    t.vm.settle()
     hits = t.vm.find("Emu Probe")
     if not t.check(hits, "the list shows Emu Probe"): return
     y = hits[0][1] + 16
     want = "q_install"
     for hold in (0.08, 0.6, 0.08, 1.5, 0.35):
-        t.vm.tap(1128, y, hold=hold, after=1.5)
-        got = t.plugin("emu-probe").get("state")
+        got = t.tap_state("emu-probe", 1128, y, want, hold=hold)
         t.eq(got, want, "after a %.2f s press on INSTALL" % hold)
         if got != want:           # put it where the next press expects it
             t.queue("emu-probe", "install" if want == "q_install" else "cancel")
@@ -136,7 +141,7 @@ def long_press(t):
 
 def is_dark(t, name):
     """The Manager's screen is drawn with the dark skin (its page background, away from any text)."""
-    img = t.vm.shot(None)
+    img = t.vm.settle()
     t.shot(name)
     r, g, b = img.getpixel((640, 650))
     return r + g + b < 300
@@ -148,11 +153,13 @@ def theme_survives_update(t):
     (The package brings the light skin; the swap to the chosen one used to wait for another restart prompt after the update.)"""
     own = "%s/%s" % (t.synths, MANAGER)
     t.check(not is_dark(t, "light-at-start"), "the fresh install shows the light theme")
-    t.vm.tap(532, 770)                                   # SETTINGS
+    t.vm.press(532, 770)                                 # SETTINGS
     hits = t.vm.find("THEME")
     if not t.check(hits, "SETTINGS shows THEME"): return
-    t.vm.tap(1160, hits[0][1] + 16)                      # its CHANGE button
-    t.eq(t.vm.read(t.settings.split("/Settings/")[0] + "/.openmpcpm-theme").strip(), "dark", "the saved theme choice")
+    t.vm.press(1160, hits[0][1] + 16)                    # its CHANGE button
+    saved = t.settings.split("/Settings/")[0] + "/.openmpcpm-theme"; end = time.time() + slow(15)
+    while t.vm.read(saved).strip() != "dark" and time.time() < end: time.sleep(1)
+    t.eq(t.vm.read(saved).strip(), "dark", "the saved theme choice")
     res, lg = t.apply()
     t.eq(t.vm.read(own + "/Plugin Skins/.theme").strip(), "dark", "the skin in place after applying the theme")
     st = t.reopen()

@@ -26,6 +26,14 @@ def words(png):
     return out
 
 
+def line(img, box):
+    """The words in one part of a capture (a PIL image), read by themselves, as one string: some labels are read only this way."""
+    im = img.convert("L").crop(box); im = im.resize((im.width * SCALE, im.height * SCALE), Image.LANCZOS)
+    buf = io.BytesIO(); im.save(buf, "PNG")
+    return subprocess.run(["tesseract", "-", "-", "--psm", "11"], input=buf.getvalue(), stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL).stdout.decode("utf-8", "replace")
+
+
 def norm(s):
     return re.sub(r"[^a-z0-9]+", "", s.lower())
 

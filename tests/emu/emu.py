@@ -26,6 +26,15 @@ def slow(secs):
     return secs * SCALE
 
 
+def changed(a, b, frac=0.002):
+    """Two captures differ by more than a sliver: a fade, a dialog, a new screen or a moved highlight, not a blinking cursor."""
+    from PIL import ImageChops
+    if a is None or b is None: return True
+    ta, tb = (i.convert("L").resize((320, 200)) for i in (a, b))
+    n = ImageChops.difference(ta, tb).point(lambda v: 255 if v > 24 else 0).histogram()[255]
+    return n > frac * 320 * 200
+
+
 def log(*a):
     print(time.strftime("%H:%M:%S"), *a, flush=True)
 
@@ -111,6 +120,7 @@ class VM:
         self.vnc_port = 5900 + int(self.env["VNC_DISPLAY"])
         self.mem = mem or ("2048" if self.arch == "armv7" else "3072")
         self.proc = self.vnc = None
+        self.settled = True
         self.key = os.path.join(STATE, "guest_key")
         os.makedirs(STATE, exist_ok=True)
         if not os.path.exists(self.key):
@@ -307,6 +317,45 @@ class VM:
         c.mouseDown(1); time.sleep(hold); c.mouseUp(1)
         time.sleep(after)
 
+    def settle(self, secs=30, quiet=None):
+        """Wait until the screen has stopped changing (a slow guest draws a new screen over several seconds, and a tap on a
+        half-drawn one lands somewhere else) and return it. Gives up after `secs` (scaled) and returns what is there: some screens
+        never stop moving."""
+        quiet = quiet if quiet is not None else 1.0 + 0.5 * (SCALE - 1)
+        end = time.time() + slow(secs)
+        last = self.shot(); since = time.time(); same = 0
+        self.settled = True
+        while time.time() < end:
+            time.sleep(0.25)
+            img = self.shot()
+            if changed(last, img): last, since, same = img, time.time(), 0
+            else:
+                same += 1
+                if same >= 2 and time.time() - since >= quiet: return img
+        self.settled = False                # e.g. a progress bar: the caller decides whether to act on it
+        return last
+
+    def double_tap(self, x, y):
+        """Two quick taps, as MPC wants to open a field's list. Spaced as two tap()s are, a slow guest takes them as two single taps."""
+        c = self._vnc()
+        c.mouseMove(x, y); time.sleep(0.15)
+        c.mouseDown(1); time.sleep(0.06); c.mouseUp(1); time.sleep(0.06)
+        c.mouseDown(1); time.sleep(0.06); c.mouseUp(1)
+        time.sleep(0.2)
+
+    def press(self, x, y, before=None, change=10, double=False, **kw):
+        """Tap once the screen is still, then wait for the tap to show (the screen changes) and for the screen to settle again.
+        Returns the settled screen, or None if nothing changed within `change` seconds (scaled): the tap was not taken, or the
+        guest is still busy with it; the caller looks at the screen again before doing anything else."""
+        before = before if before is not None else self.settle()
+        if double: self.double_tap(x, y)
+        else: self.tap(x, y, after=0.2, **kw)
+        end = time.time() + slow(change)
+        while time.time() < end:
+            if changed(before, self.shot()): return self.settle()
+            time.sleep(0.3)
+        return None
+
     def wait_stable(self, secs=60, quiet=1.5, not_black=True):
         """Wait until the screen stops changing (two equal captures `quiet` apart) and, by default, shows something. Returns the image."""
         end, last = time.time() + slow(secs), None
@@ -320,11 +369,13 @@ class VM:
         raise Fail("the screen never settled")
 
     # -- reading the screen ------------------------------------------------------------------------------------------------------
-    def words(self, save=None):
-        """OCR of the screen now: ocr.words(). `save` keeps the capture."""
-        import ocr, tempfile
+    def words(self, save=None, img=None):
+        """OCR of the screen now (or of the capture `img`): ocr.words(). `save` keeps the capture."""
+        import ocr
         path = save or os.path.join(self.dir, "screen.png")
-        self.last_shot = self.shot(path)
+        if img is None: img = self.shot(path)
+        else: img.save(path)
+        self.last_shot = img
         self._words = ocr.words(path)
         return self._words
 
