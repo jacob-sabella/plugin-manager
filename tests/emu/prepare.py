@@ -18,15 +18,23 @@ def arch(vm):
     return "aarch64" if "aarch64" in vm.out("uname -m") else "armv7"
 
 
+# QEngine sets its own LD_PRELOAD (its panel and audio shims) in a drop-in called override.conf, which on the Gen2 image sits on a
+# read-only root. A drop-in of that name sorts after the addin installer's own (90-mpc-addins.conf) and so wins: MPC then starts
+# without the addin. A device's firmware keeps its list in the unit itself, so the emulator's drop-in is renamed to sort first.
+QENGINE_DROPIN = ("d=/etc/systemd/system/acvs.service.d; if [ -f $d/override.conf ]; then mv $d/override.conf $d/10-qengine.conf "
+                  "&& systemctl daemon-reload; fi")
+
+
 def storage(vm):
     """Make the install location and return its Synths folder."""
     if arch(vm) == "armv7":
-        vm.sh("mkdir -p /media/az01-internal/Synths")
+        vm.sh("mkdir -p /media/az01-internal/Synths; " + QENGINE_DROPIN)
         return "/media/az01-internal/Synths"
     vm.sh("dd if=/dev/zero of=/data/nvme.img bs=1M count=0 seek=1200 2>/dev/null && mke2fs -q -t ext4 -F /data/nvme.img")
     vm.sh("mount -o remount,rw /")      # the root is read-only; only this VM's overlay is written
     vm.write("/etc/systemd/system/nvme.mount", "[Unit]\nDescription=The emulator's stand-in for the NVMe user partition\nBefore=acvs.service\n\n"
              "[Mount]\nWhat=/data/nvme.img\nWhere=/nvme\nType=ext4\nOptions=loop\n\n[Install]\nWantedBy=local-fs.target\n")
+    vm.sh(QENGINE_DROPIN)
     vm.sh("systemctl daemon-reload && systemctl enable nvme.mount 2>&1; mount -o remount,ro /; systemctl start nvme.mount && mkdir -p /nvme/Synths '/nvme/MPC Documents'")
     return "/nvme/Synths"
 
@@ -64,8 +72,8 @@ def open_manager(vm, secs=420):
         def did(what): log("  nav %02d: %s" % (step, what))
         if has("UPDATE ALL", "OPEN MPC - PLUGIN MANAGER", "LOCATIONS") and vm.exists("/tmp/openmpc-pm/device.txt"):
             return
-        if near(corner, (0xd2, 0x0f, 0x44)) or has("Welcome to MPC"): did("welcome"); vm.tap(640, 640, after=3)
-        elif has("GOT IT", "Learn how to"): did("learn"); vm.tap(960, 640, after=3)
+        if near(corner, (0xd2, 0x0f, 0x44)) or has("Welcome to MPC", "Welcome to"): did("welcome"); vm.tap(640, 640, after=3)
+        elif has("GOT IT", "Learn how", "get this info at any"): did("learn"); vm.tap(960, 640, after=3)
         elif has("LETS GO", "to the internet"): did("connect"); vm.tap(546, 760); vm.tap(640, 640, after=5)
         elif has("MANUFACTURER") and has("SELECT", "CLOSE"):                       # the plugin list
             if rows("Plugin Manager"):

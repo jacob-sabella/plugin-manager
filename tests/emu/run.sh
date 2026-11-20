@@ -11,7 +11,9 @@ label=work; for ((k = 0; k < ${#rest[@]}; k++)); do [ "${rest[k]}" = --label ] &
 mkdir -p "$here/results"
 pids=()
 for i in "${inst[@]}"; do
-    ( "$here/in-container" "pm-emu-$i-$label" python3 run.py "$i" ${rest[@]+"${rest[@]}"} 2>&1 | tee "$here/results/$i-$label.log" | grep --line-buffered -E "^[0-9:]+ $i |^      - |Traceback" ; exit "${PIPESTATUS[0]}" ) &
+    # one run per instance at a time (QEngine keeps one running copy of an instance): a second build's run waits for the first
+    ( mkdir -p "$here/state"; exec 9> "$here/state/$i.lock"; flock 9
+      "$here/in-container" "pm-emu-$i-$label" python3 run.py "$i" ${rest[@]+"${rest[@]}"} 2>&1 | tee "$here/results/$i-$label.log" | grep --line-buffered -E "^[0-9:]+ $i |^      - |Traceback" ; exit "${PIPESTATUS[0]}" ) &
     pids+=($!)
 done
 rc=0
