@@ -21,5 +21,11 @@ while [ $# -gt 0 ]; do
     esac
     args+=("$a")
 done
+# The user drive: a disk of its own for the stand-in of the internal NVMe partition. It has to be a real block device: MPC asks its
+# drive daemon (edisksd) what is attached, and that daemon tells it to ignore loop devices, so an image mounted with -o loop is no
+# drive at all to MPC OS 3.10.1 (no "VST2 Plugins" scan, "Download directory could not be found"). Added first, so the instance's
+# own disks keep their names; the guest finds it as /dev/disk/by-id/virtio-pmuser.
+u="$PM_OVERLAY_DIR/user.qcow2"
+[ -f "$u" ] || qemu-img create -q -f qcow2 "$u" "${PM_USER_DISK_SIZE:-4G}" >&2
 # shellcheck disable=SC2086
-exec "$real" "${args[@]}" ${PM_QEMU_APPEND:-}
+exec "$real" -drive "if=none,file=$u,format=qcow2,id=pmuser" -device virtio-blk-device,drive=pmuser,serial=pmuser "${args[@]}" ${PM_QEMU_APPEND:-}

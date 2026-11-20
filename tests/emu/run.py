@@ -19,7 +19,8 @@ class T:
     """What a scenario works with: the machine, the fixture, and the steps a person at the device would take."""
     def __init__(self, vm, fx, info, out):
         self.vm, self.fx, self.out = vm, fx, out
-        self.arch, self.synths = info["arch"], info["synths"]
+        self.arch, self.synths = info["arch"], info["synths"]      # synths: where plugins are installed (VST2 Plugins on MPC OS 3.10.1+)
+        self.external = bool(info.get("external_plugins"))         # this firmware loads plugins from "<drive>/VST2 Plugins"
         self.gen = 2 if self.arch == "aarch64" else 1
         self.settings = prepare.SETTINGS
         self.problems = []
@@ -180,7 +181,8 @@ def build_id(label):
     d = os.path.join(HERE, "build", "fx", label)
     for f in sorted(os.listdir(d)):
         if f.startswith("Plugin-Manager-G2-" + prepare.VERSION_A): h.update(open(os.path.join(d, f), "rb").read())
-    h.update(open(os.path.join(HERE, "prepare.py"), "rb").read())
+    for f in ("prepare.py", "shim/qemu-system-aarch64"):          # what the machine is made of: a change here needs a new snapshot
+        h.update(open(os.path.join(HERE, f), "rb").read())
     return h.hexdigest()[:16]
 
 

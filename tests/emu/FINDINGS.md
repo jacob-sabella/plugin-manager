@@ -53,8 +53,9 @@ Manager's embedded copy of `vst2_migrate.sh` was regenerated from it, and the em
 
 ## What the emulator cannot cover
 
-* MPC OS 3.10.1 itself (QEngine does not boot it): the Manager's 3.10.1 logic is driven by a line in MPC.settings, MPC's own
-  loading from `VST2 Plugins` is not.
+* MPC OS 3.10.1 loading a plugin from an attached drive. (3.10.1 itself is covered since 2026-11-20: instances `mpc-g1-3101` and
+  `mpc-g2-3101` load the Manager from the internal drive's `VST2 Plugins`; see SPIKE.md. An earlier version of this note said
+  QEngine does not boot 3.10.1: that had not been tried.)
 * A Force (its firmware was not at hand), and anything that differs between models outside the firmware image: which drive is
   mounted where, how full it is, mods (MockbaMod, Hakai) and their launchers.
 * Real media: SD cards, USB sticks, the SATA bay, Akai's automounter and its options, a card pulled during an install, slow or

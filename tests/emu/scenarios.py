@@ -13,7 +13,7 @@ def fresh_install(t):
     """A fresh install of the Manager: MPC lists it, draws its skin, it reads the catalog and finds where to install."""
     dev = t.vm.read(PM + "/device.txt")
     t.has(dev, "problem: none", "device.txt")
-    t.has(dev, "install target: %s" % t.synths, "device.txt")
+    t.has(dev, ("vst2: on  %s" if t.external else "install target: %s") % t.synths, "device.txt")
     t.has(dev, "file=%s/%s/openmpc_pm_g2.so" % (t.synths, MANAGER), "device.txt names the plugin MPC loaded")
     st = t.state()
     t.eq(st["version"], "9.0.0", "the running version")
@@ -199,27 +199,30 @@ def api_install(t, pid, **kw):
 
 @scenario
 def drive_name_with_space(t):
-    """An exFAT card called "EMU CARD" (big clusters, as cards come): register it, install to it, update, remove."""
+    """An exFAT card called "EMU CARD" (big clusters, as cards come): register it, install to it, update, remove. On MPC OS 3.10.1+
+    there is nothing to register: the card's "VST2 Plugins" is a place to install to as soon as the card is in."""
     mnt = add_drive(t, "EMU CARD", "exfat", "rw", mkfs="-c 128K")
-    syn = mnt + "/Synths"; folder = "%s/%s" % (syn, PROBE)
+    syn = mnt + ("/VST2 Plugins" if t.external else "/Synths"); folder = "%s/%s" % (syn, PROBE)
     t.fx.catalog(emu_probe=["1.0.0"])
     st = t.refresh()
-    r = location(t, syn, st)
-    t.eq((r.get("usable"), r.get("candidate")), (1, 1), "the card is offered for REGISTER (usable, candidate)")
-    t.vm.api("register?path=%s" % syn.replace(" ", "%20"), post=True)
-    res, lg = t.apply()
-    t.eq(res.get("loc-1", ("",))[0], "ok", "result of the registration")
-    t.has(t.settings_text(), "<Location>%s</Location>" % syn, "MPC.settings lists the card's Synths folder")
-    t.settings_ok()
-    st = t.reopen()
+    if not t.external:
+        r = location(t, syn, st)
+        t.eq((r.get("usable"), r.get("candidate")), (1, 1), "the card is offered for REGISTER (usable, candidate)")
+        t.vm.api("register?path=%s" % syn.replace(" ", "%20"), post=True)
+        res, lg = t.apply()
+        t.eq(res.get("loc-1", ("",))[0], "ok", "result of the registration")
+        t.has(t.settings_text(), "<Location>%s</Location>" % syn, "MPC.settings lists the card's Synths folder")
+        t.settings_ok()
+        st = t.reopen()
     names = [x["path"] for x in st["targets"]]
-    if not t.check(syn in names, "the card is an install target after the restart: %s" % names): return
+    if not t.check(syn in names, "the card is an install target%s: %s" % ("" if t.external else " after the restart", names)): return
     t.vm.api("target?k=%d" % names.index(syn), post=True)
     time.sleep(2)
     res, lg = api_install(t, "emu-probe")
     t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install to the card")
     t.check(t.vm.exists(folder + "/emu_probe.so"), "the plugin's .so is on the card")
-    t.has(t.settings_text(), 'file="%s/emu_probe.so"' % folder, "MPC.settings names the file on the card")
+    if t.external: t.has(t.vm.read(folder + "/plugin.json"), '"emu_probe.so"', "the plugin.json on the card names the binary")
+    else: t.has(t.settings_text(), 'file="%s/emu_probe.so"' % folder, "MPC.settings names the file on the card")
     t.eq(leftovers(t, syn), [], "nothing left over on the card")
     t.fx.catalog()
     st = t.reopen()
@@ -239,7 +242,9 @@ def drive_name_with_space(t):
 
 @scenario
 def exfat_noexec_drive(t):
-    """A drive MPC mounted noexec (a Force's SSD): the Manager says why it cannot be used, and installs go to the internal drive."""
+    """A drive MPC mounted noexec (a Force's SSD): the Manager says why its Synths folder cannot be used, and installs go to the
+    internal drive. On MPC OS 3.10.1+ the drive's "VST2 Plugins" is still offered (the Manager's note in probe_device: MPC remounts a
+    drive for that folder; not something the emulator can show), but it is not where an install goes unless it is chosen."""
     mnt = add_drive(t, "EMUSSD", "exfat", "rw,noexec")
     syn = mnt + "/Synths"
     t.vm.sh("mkdir -p '%s'" % syn)
@@ -250,7 +255,8 @@ def exfat_noexec_drive(t):
     t.has(r.get("state", ""), "noexec", "the reason shown for the drive")
     rc, out = t.vm.sh("wget -q -O - --header 'X-PM: 1' --post-data '' 'http://127.0.0.1:8790/api/register?path=%s' 2>&1" % syn, check=False)
     t.check(rc != 0, "registering the noexec drive is refused")
-    t.eq([x["path"] for x in st["targets"]], [t.synths], "the install targets")
+    want = [t.synths] + ([mnt + "/VST2 Plugins"] if t.external else [])
+    t.eq([x["path"] for x in st["targets"]], want, "the install targets")
     t.eq(st.get("problem"), "", "no problem is reported: the internal drive is usable")
     res, lg = api_install(t, "emu-probe")
     t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install")
@@ -261,7 +267,7 @@ def exfat_noexec_drive(t):
     st = t.reopen()
     r = location(t, syn, st)
     t.eq(r.get("usable"), 0, "listed by MPC, the noexec drive is still not usable")
-    t.eq([x["path"] for x in st["targets"]], [t.synths], "the install targets with the drive listed")
+    t.eq([x["path"] for x in st["targets"]], want, "the install targets with the drive listed")
     t.has(t.vm.read(PM + "/device.txt"), "noexec", "device.txt says why")
 
 
@@ -275,7 +281,9 @@ def full_disk(t):
     res, lg = api_install(t, "emu-probe")
     t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install while there is room")
     t.reopen()
-    t.vm.sh("dd if=/dev/zero of='%s/fill.bin' bs=1M 2>/dev/null; sync; true" % t.synths, timeout=900)
+    # most of it at once where the filesystem can (ext4), the rest written out, so the drive's size hardly matters
+    t.vm.sh("d='%s'; k=$(df -Pk \"$d\" | awk 'NR==2 {print $4}'); [ \"$k\" -gt 131072 ] && fallocate -l $(( (k - 65536) * 1024 )) \"$d/fill0.bin\" 2>/dev/null; "
+            "dd if=/dev/zero of=\"$d/fill.bin\" bs=1M 2>/dev/null; sync; true" % t.synths, timeout=900)
     t.eq(t.vm.out("df -Pk '%s' | awk 'NR==2 {print $4}'" % t.synths).strip(), "0", "free KB on the install drive once filled")
     st = t.refresh()
     t.shot("full")
@@ -294,7 +302,7 @@ def full_disk(t):
     t.settings_ok()
     t.has(t.settings_text(), "openmpc_pm_g2.so", "MPC.settings still lists the Manager")
     t.eq(leftovers(t, t.synths), [], "nothing left over")
-    t.vm.sh("rm -f '%s/fill.bin'; sync" % t.synths)
+    t.vm.sh("rm -f '%s/fill.bin' '%s/fill0.bin'; sync" % (t.synths, t.synths))
     st = t.refresh()
     t.eq(st.get("problem"), "", "no problem once there is room")
     if t.plugin("emu-probe", st).get("state") == "install":
@@ -332,7 +340,10 @@ def power_cut_mid_apply(t):
     res, lg = api_install(t, "emu-probe")
     t.eq(res.get("emu-probe"), ("ok", "install 1.0.0"), "result of the install")
     # the user's own files make the folder too big for a copy in memory: the safety copy goes on the drive, which takes a while
-    t.vm.sh("dd if=/dev/zero of='%s/user.bin' bs=1M count=230 2>/dev/null; sync" % folder, timeout=600)
+    # (as big as the drive allows, up to 1.2 GB: on a fast disk a small copy is over before the power can be cut)
+    free = int(t.vm.out("df -Pm '%s' | awk 'NR==2 {print $4}'" % t.synths).strip() or 0)
+    mb = max(230, min(1200, int((free - 300) / 2.2)))
+    t.vm.sh("fallocate -l %dM '%s/user.bin' 2>/dev/null || dd if=/dev/zero of='%s/user.bin' bs=1M count=%d 2>/dev/null; sync" % (mb, folder, folder, mb), timeout=900)
     t.fx.catalog()
     st = t.reopen()
     t.eq(t.plugin("emu-probe", st).get("state"), "update", "the update is offered")
@@ -345,7 +356,7 @@ def power_cut_mid_apply(t):
         seen = [x for x in leftovers(t, t.synths) if x.startswith(".pm-s")]
         if not seen: time.sleep(0.5)
     if not t.check(seen, "a safety copy was being made on the drive"): return
-    time.sleep(1.5)
+    time.sleep(1.0)
     t.vm.sh("sync", check=False)          # what was copied so far is on the disk, as on a card that was written for a minute
     t.vm.kill()
     log("%s: power cut with %s in place" % (t.vm.instance, seen))
@@ -384,12 +395,14 @@ def catalog_retry(t):
 
 @scenario
 def vst2_plugin_json(t):
-    """The MPC OS 3.10.1 path, as far as older firmware can run it: with VST2 Support on in MPC.settings the Manager installs into
-    "<drive>/VST2 Plugins" and leaves a plugin.json that names a binary which is there (#46). MPC itself, being 3.9.1 or 3.10.0, does
-    not load from that folder: only the Manager's side is checked."""
-    t.vm.sh("systemctl stop acvs; sed -i 's|</PROPERTIES>|  <VALUE name=\"Enhancements.VST2Support\" val=\"1\"/>\\n</PROPERTIES>|' %s; "
-            "rm -rf /tmp/openmpc-pm; systemctl start acvs" % t.settings)
+    """The MPC OS 3.10.1 path: with External Plugin Support (VST2 Support) on, the Manager installs into "<drive>/VST2 Plugins" and
+    leaves a plugin.json that names a binary which is there (#46). On older firmware the switch is written into MPC.settings and only
+    the Manager's side is checked, since that MPC does not load from the folder."""
+    if not t.external:                                                # on MPC OS 3.10.1+ the switch is on already, and MPC loads from there
+        t.vm.sh("systemctl stop acvs; sed -i 's|</PROPERTIES>|  <VALUE name=\"Enhancements.VST2Support\" val=\"1\"/>\\n</PROPERTIES>|' %s; "
+                "rm -rf /tmp/openmpc-pm; systemctl start acvs" % t.settings)
     t.fx.catalog(emu_probe=["1.0.0"])
+    if t.external: t.refresh()
     st = t.reopen()
     t.eq(st.get("vst2"), 2, "the Manager sees VST2 Support on")
     drive = t.synths.rsplit("/", 1)[0]

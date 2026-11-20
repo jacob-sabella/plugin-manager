@@ -23,6 +23,10 @@ Building the instances (once; about ten minutes each, needs the firmware images 
     tests/emu/qe scripts/build_scripts/new_instance.sh --name mpc-g1-391  --product-code ACVA --firmware $FIRMWARE_DIR/MPC-3.9.1-Gen1-update.img
     tests/emu/qe scripts/build_scripts/new_instance.sh --name mpc-g2-3100 --product-code ACVG --firmware $FIRMWARE_DIR/MPC-3.10.0-Gen2-update.img
 
+Any other firmware or model is another instance (`--name`, `--product-code`), run with `./run.sh -i <name>`; `mpc-g1-3101` and
+`mpc-g2-3101` are MPC OS 3.10.1. The scenarios do not name a firmware: the preparation asks the MPC binary whether it loads plugins
+from `<drive>/VST2 Plugins`, sets the machine up accordingly, and the few checks that differ by design read `t.external`.
+
 ## How it works
 
 * `qe` runs a command in the `pm-emu-host` container; `in-container` gives each machine its own container, so every VM uses the same
@@ -55,9 +59,9 @@ environment, and what the screen shows.
 | `exfat_noexec_drive` | a noexec drive is refused with its reason, installs go to the internal drive |
 | `readonly_addins` | `/data/mpc-addins` read-only: an addin is refused before MPC stops, a plugin still installs |
 | `catalog_retry` | the catalog cannot be fetched at first; the Manager tries again on its own |
-| `vst2_plugin_json` | the MPC OS 3.10.1 install path (VST2 Support switched on in MPC.settings): `VST2 Plugins` and a correct plugin.json |
+| `vst2_plugin_json` | the MPC OS 3.10.1 install path: `VST2 Plugins` and a correct plugin.json (on older firmware the switch is written into MPC.settings) |
 
-Drives are loop images mounted under `/media/<label>` in the guest, with the mount options a device was seen to use. The power cut
+The internal drive is a disk the harness adds to the VM (`shim/qemu-system-aarch64`). Attached drives are loop images mounted under `/media/<label>` in the guest, with the mount options a device was seen to use. The power cut
 is QEMU's `quit` after a guest `sync`: what was written is on the disk, nothing after it is.
 
 ## Testing a fix
