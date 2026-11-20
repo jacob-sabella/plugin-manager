@@ -2177,7 +2177,9 @@ static void probe_device(device_t *d) {
     snprintf(parent, sizeof parent, "%s", ADDINS_DIR);
     char *ps = strrchr(parent, '/');
     if (ps && ps != parent) *ps = 0;
-    if (is_dir(parent) && access(parent, W_OK) == 0) snprintf(d->addins, sizeof d->addins, "%s", ADDINS_DIR);
+    /* writable: the folder itself when it is there (it can be read-only on its own: a bind mount, a mod's overlay), else its parent */
+    if (is_dir(ADDINS_DIR) ? access(ADDINS_DIR, W_OK) == 0 : is_dir(parent) && access(parent, W_OK) == 0)
+        snprintf(d->addins, sizeof d->addins, "%s", ADDINS_DIR);
     DIR *ad = d->addins[0] ? opendir(d->addins) : NULL;
     while (ad && (e = readdir(ad)) && d->naddin < 32) {
         addin_t *a = &d->addin[d->naddin];
