@@ -329,3 +329,16 @@ def power_cut_mid_apply(t):
     t.has(t.vm.read(folder + "/mpc-plugin.json"), '"version": "1.0.1"', "the folder's manifest")
     t.eq(leftovers(t, t.synths), [], "nothing left over")
     t.settings_ok()
+
+
+@scenario
+def catalog_retry(t):
+    """The catalog cannot be reached at first (Wi-Fi still joining when MPC opens the project): the Manager tries again on its own."""
+    t.fx.put(".fail", "/catalog.json 2\n")           # the next two requests get no answer
+    t.vm.api("refresh", post=True)
+    st = t.state(secs=30, until=lambda s: not s.get("busy") and s.get("online") == 0, why="the Manager is offline after a dropped fetch")
+    t.eq(st.get("online"), 0, "offline after the dropped fetch")
+    t.shot("offline")
+    st = t.state(secs=45, until=lambda s: s.get("online") == 1 and not s.get("busy"), why="the Manager came back online on its own")
+    t.eq((st.get("online"), len(st.get("plugins", [])) >= 4), (1, True), "online with the catalog, with nobody tapping REFRESH")
+    t.has(t.fx.requests(), "DROPPED /catalog.json", "the fixture really dropped the request")
