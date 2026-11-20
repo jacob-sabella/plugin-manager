@@ -2019,6 +2019,26 @@ static void probe_device(device_t *d) {
             snprintf(d->target, sizeof d->target, "%s", vd);
             snprintf(d->via, sizeof d->via, "VST2 Plugins, no usable Synths folder");
         }
+        /* No internal drive can take it (read-only, full): a drive that is plugged in can. 3.10.1 loads from "<drive>/VST2 Plugins" on
+         * any drive, the same drives the drive menu offers below. A Force with a usable SSD said "No install location". */
+#ifdef FS_ANY
+        FILE *xf = d->target[0] ? NULL : fopen(!access("/tmp/pm-mounts", R_OK) ? "/tmp/pm-mounts" : "/proc/mounts", "r");
+#else
+        FILE *xf = d->target[0] ? NULL : fopen("/proc/mounts", "r");
+#endif
+        char xd[128], xm[256], xt[32], xo[512];
+        while (xf && !d->target[0] && fscanf(xf, "%127s %255s %31s %511s %*d %*d", xd, xm, xt, xo) == 4) {
+            struct statvfs sv;
+            mount_unescape(xm);
+            const char *lab = xm + 7;
+            if (strncmp(xm, "/media/", 7) || !*lab || strchr(lab, '/') || !strncmp(lab, "az01-internal", 13) || !strncmp(lab, "acvs-", 5)) continue;
+            if (strncmp(xo, "rw", 2) || (xo[2] && xo[2] != ',') || !strcmp(xt, "tmpfs") || !strcmp(xt, "ramfs") || !strcmp(xt, "squashfs")) continue;
+            if (strlen(xm) > 180 || !safe(xm) || !is_dir(xm)) continue;
+            if (statvfs(xm, &sv) || (unsigned long long)sv.f_bavail * sv.f_frsize < 64ull << 20) continue;
+            snprintf(d->target, sizeof d->target, "%s/VST2 Plugins", xm);
+            snprintf(d->via, sizeof d->via, "VST2 Plugins on %.40s, no usable internal drive", lab);
+        }
+        if (xf) fclose(xf);
     }
     /* No fallback: MPC draws a plugin's skin only from a listed content location (docs/NOTES.md in mpc-vst-plugins, 2026-10-27),
      * so a folder that is not on the list would install a plugin that loads with no skin. With nothing usable listed the
@@ -2055,6 +2075,9 @@ static void probe_device(device_t *d) {
      * is offered: MPC remounts it with exec for VST2 plugins (firmware strings, 2026-10-31; not yet seen on a device). */
     if (d->vst2 == 2 && d->vst2dir[0]) {
         snprintf(d->vdrv[0], sizeof d->vdrv[0], "%s", d->vst2dir);
+        if (!strncmp(d->vst2dir, "/media/", 7) && strncmp(d->vst2dir + 7, "az01-internal", 13))   /* the target is a plugged-in drive: its label */
+            snprintf(d->vname[0], sizeof d->vname[0], "%.*s", (int)strcspn(d->vst2dir + 7, "/") > 20 ? 20 : (int)strcspn(d->vst2dir + 7, "/"), d->vst2dir + 7);
+        else
         snprintf(d->vname[0], sizeof d->vname[0], "Internal");
         d->nvdrv = 1;
 #ifdef FS_ANY
