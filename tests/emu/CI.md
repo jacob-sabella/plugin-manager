@@ -70,9 +70,31 @@ built from them:
   `pull_request` trigger is commented out; if it is enabled, keep the `head.repo.full_name == github.repository` condition and
   set the repository to require approval for outside contributors' workflows.
 
-If a hosted runner is used instead, the images have to come from a private store on each run (a URL in a repository secret, the
-sha256 checked after download), nothing is cached, and the job is limited to `schedule` and `workflow_dispatch`: secrets are not
-given to fork PRs, and a cache in a public repository can be read by one.
+### Hosted runners with private firmware storage
+
+`ci/emulator-tests-hosted.yml` is the variant for GitHub's own runners, which are free for a public repository. Not run yet: its
+timings are unmeasured. Each job fetches one image from a private store, checks its sha256, builds the instance and runs the
+scenarios; Gen1 and Gen2 are separate jobs, each on its own runner.
+
+Setup, once, by someone with rights on the organisation:
+
+1. A **private** repository (the draft calls it `open-mpc/firmware-private`) with one release, tag `images`, and the update
+   images as its assets. A release asset can be up to 2 GiB; the images are 160 to 380 MB.
+2. A fine-grained token with read access to the contents of that repository only, stored as `FIRMWARE_TOKEN` in an environment
+   named `firmware` of this repository, the environment restricted to the `main` branch.
+3. Copy the workflow to `.github/workflows/`.
+
+What keeps the images private:
+
+* The job runs on `schedule` and `workflow_dispatch` only, on `main` only. No pull request's code runs where the token is; never
+  add `pull_request_target`.
+* Nothing built from an image is cached or uploaded. In a public repository a fork's pull request can restore the default
+  branch's caches and anyone signed in can download artifacts, so the instance is rebuilt in every job (about ten minutes) and
+  the artifact holds only the Manager's logs and screen captures.
+* The token reads one repository. If it leaks, the images leak and nothing else; rotate it and that is the end of it.
+
+This is the project keeping copies of Akai's firmware for its own tests. It is private, but it is still a copy: whoever owns the
+organisation should be the one to decide that.
 
 Images used (sha256, to check a runner's copies):
 

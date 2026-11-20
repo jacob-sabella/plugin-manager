@@ -1,0 +1,101 @@
+# Emulator tests on GitHub-hosted runners, with the firmware kept in private storage. A PROPOSAL, NOT RUN YET: this file is kept in
+# tests/emu/ci/ so that nothing runs it. To use it, do the setup in tests/emu/CI.md ("Hosted runners with private firmware
+# storage"), then copy it to .github/workflows/. The timings on a hosted runner are not measured: time the first runs and set
+# timeout-minutes from them.
+#
+# Akai's update images are fetched at the start of every job from a PRIVATE repository's release, with a token that can read that
+# repository and nothing else. They are never written to a cache or an artifact: in a public repository both can be read from
+# outside (a fork's pull request can restore the default branch's caches; anyone signed in can download artifacts).
+name: emulator tests (hosted)
+
+on:
+  schedule:
+    - cron: "17 3 * * *"          # nightly, on the default branch only
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: "Scenario names (space separated; empty: all)"
+        default: ""
+  # No pull_request trigger, and never pull_request_target: a pull request's code must not run where the firmware token is.
+
+concurrency:
+  group: emulator-tests-hosted
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  emulator:
+    if: github.repository == 'open-mpc/plugin-manager' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: firmware           # holds FIRMWARE_TOKEN; restrict the environment to the main branch
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { instance: mpc-g1-391,  code: ACVA, image: MPC-3.9.1-Gen1-update.img,  sha256: "4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6" }
+          - { instance: mpc-g2-3100, code: ACVG, image: MPC-3.10.0-Gen2-update.img, sha256: "c5b941e1b07d261a58b41784e2ff4f911b3ca4dd25969698eaa35aa706d9dec2" }
+    env:
+      FIRMWARE_REPO: open-mpc/firmware-private      # a private repository with one release, tag "images", holding the .img files
+      QENGINE_REF: 83a03e5                          # the QEngine commit the harness was written against
+      QENGINE: ${{ github.workspace }}/QEngine
+      MPC_VST: ${{ github.workspace }}/mpc-vst-plugins
+      FIRMWARE_DIR: ${{ runner.temp }}/firmware
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: plugin-manager }
+      - uses: actions/checkout@v4
+        with: { repository: open-mpc/mpc-vst-plugins, path: mpc-vst-plugins }
+      - name: QEngine
+        run: |
+          git clone -q https://github.com/Peyton-C/QEngine "$QENGINE"
+          git -C "$QENGINE" checkout -q "$QENGINE_REF"
+
+      - name: Firmware (private release; checked against the sha256 in this file)
+        env:
+          GH_TOKEN: ${{ secrets.FIRMWARE_TOKEN }}
+        run: |
+          mkdir -p "$FIRMWARE_DIR"
+          gh release download images --repo "$FIRMWARE_REPO" --pattern "${{ matrix.image }}" --dir "$FIRMWARE_DIR"
+          echo "${{ matrix.sha256 }}  $FIRMWARE_DIR/${{ matrix.image }}" | sha256sum -c -
+
+      # The skin is the project's own work, so it may be cached.
+      - name: Skin cache
+        uses: actions/cache@v4
+        with:
+          path: plugin-manager/vst/build/skin
+          key: skin-${{ hashFiles('plugin-manager/vst/layout.conf', 'plugin-manager/vst/skin.css', 'plugin-manager/vst/vst.json', 'plugin-manager/vst/params.json', 'plugin-manager/vst/make_*.py', 'plugin-manager/vst/skin_post.py', 'plugin-manager/vst/skin_taps.py', 'plugin-manager/vst/images/**') }}
+
+      - name: Instance (built in every job: it holds the firmware's files, so it is not cached)
+        working-directory: plugin-manager
+        run: |
+          docker build -q -t pm-emu-host tests/emu
+          tests/emu/qe scripts/build_scripts/new_instance.sh --name "${{ matrix.instance }}" --product-code "${{ matrix.code }}" --firmware "$FIRMWARE_DIR/${{ matrix.image }}"
+
+      - name: Build the Manager and the fixture
+        working-directory: plugin-manager
+        run: |
+          [ -d vst/build/skin ] || vst/build_themes.sh armv7
+          tests/emu/build.sh
+
+      - name: Scenarios
+        working-directory: plugin-manager
+        run: |
+          args=(-i "${{ matrix.instance }}"); for k in ${{ inputs.scenarios }}; do args+=(-k "$k"); done
+          tests/emu/run.sh "${args[@]}"
+
+      - name: Results (screen captures and the logs the Manager wrote on the device; no firmware files)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-results-${{ matrix.instance }}
+          path: |
+            plugin-manager/tests/emu/results/**/summary.json
+            plugin-manager/tests/emu/results/**/*.png
+            plugin-manager/tests/emu/results/**/*.log
+            plugin-manager/tests/emu/results/**/*-result
+            plugin-manager/tests/emu/results/**/*-device.txt
+            plugin-manager/tests/emu/results/*.log
+          retention-days: 14
