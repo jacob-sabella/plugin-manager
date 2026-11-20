@@ -2,7 +2,7 @@
 Each starts from the ready snapshot: MPC running, the Manager (version A) on a track with its screen open, the catalog loaded."""
 import time
 from run import scenario, PM
-from emu import Fail, log
+from emu import Fail, log, slow
 
 PROBE = "acme - VST - Emu Probe"
 MANAGER = "OpenMPC - VST - Plugin Manager"
@@ -165,7 +165,7 @@ def theme_survives_update(t):
     st = t.reopen()
     t.eq(st["version"], "9.0.1", "the version MPC loads after the update")
     t.check(is_dark(t, "dark-after-update"), "the dark theme shows after the update")
-    time.sleep(8)                                        # the old build prepared a second restart here
+    time.sleep(slow(8))                                  # the old build prepared a second restart here
     st = t.state()
     t.eq((st.get("ready"), st.get("queued")), (0, 0), "nothing is waiting for another restart (ready, queued)")
 
@@ -351,7 +351,7 @@ def power_cut_mid_apply(t):
     st = t.prepare()
     if not t.check(st.get("ready"), "the update is prepared: %s" % st.get("status")): return
     t.launch()
-    end = time.time() + 240; seen = []
+    end = time.time() + slow(240); seen = []
     while time.time() < end and not seen:
         seen = [x for x in leftovers(t, t.synths) if x.startswith(".pm-s")]
         if not seen: time.sleep(0.5)
@@ -361,11 +361,11 @@ def power_cut_mid_apply(t):
     t.vm.kill()
     log("%s: power cut with %s in place" % (t.vm.instance, seen))
     t.vm.start()
-    end = time.time() + 300
+    end = time.time() + slow(300)
     while t.vm.sh("pidof MPC", check=False)[0] != 0:
         if time.time() > end: raise Fail("MPC did not start after the power cut")
         time.sleep(3)
-    time.sleep(15)
+    time.sleep(slow(15))
     left = [x for x in leftovers(t, t.synths) if x.startswith(".pm-s")]
     t.check(left, "the cut left a partial safety copy behind (%s)" % left)
     t.has(t.vm.read(folder + "/mpc-plugin.json"), '"version": "1.0.0"', "the plugin's folder after the cut")

@@ -7,6 +7,9 @@ here="$(cd "$(dirname "$0")" && pwd)"
 inst=(); rest=()
 while [ $# -gt 0 ]; do case "$1" in -i) inst+=("$2"); shift 2 ;; *) rest+=("$1"); shift ;; esac; done
 [ ${#inst[@]} -gt 0 ] || inst=(mpc-g1-391 mpc-g2-3100)
+# PM_EMU_TIMESCALE: how much slower than a desktop the guest runs here; every timeout is multiplied by it. A GitHub-hosted runner
+# is about 3.3 times slower (Gen1 slower again), so 4 there unless given.
+[ -z "${GITHUB_ACTIONS:-}" ] || export PM_EMU_TIMESCALE="${PM_EMU_TIMESCALE:-4}"
 label=work; for ((k = 0; k < ${#rest[@]}; k++)); do [ "${rest[k]}" = --label ] && label="${rest[k+1]}"; done
 mkdir -p "$here/results"
 pids=()

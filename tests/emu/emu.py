@@ -16,6 +16,16 @@ SERIAL_PORT, MONITOR_PORT, FIXTURE_PORT = 4575, 4576, 8731
 FIXTURE_ADDR = "10.0.2.2:8731"   # the fixture server as the guest sees it: QEMU's NAT maps 10.0.2.2 to this container's loopback
 
 
+# How much slower than a desktop this host runs the guest. Every wait for the guest is multiplied by it; the screen waits below adapt
+# by themselves (they wait for the screen, not for a time). run.sh sets it on CI when it is not given.
+SCALE = max(1.0, float(os.environ.get("PM_EMU_TIMESCALE") or 1))
+
+
+def slow(secs):
+    """A timeout for the guest, on this host."""
+    return secs * SCALE
+
+
 def log(*a):
     print(time.strftime("%H:%M:%S"), *a, flush=True)
 
@@ -124,7 +134,7 @@ class VM:
         self._serial_stop = threading.Event()
         self._serial = threading.Thread(target=self._serial_console, args=(not loadvm,), daemon=True)
         self._serial.start()
-        self.wait_ssh(60 if loadvm else 420)
+        self.wait_ssh(slow(60 if loadvm else 420))
         log("%s/%s: ssh up after %ds%s" % (self.instance, self.stage, time.time() - self.t0, " (snapshot %s)" % loadvm if loadvm else ""))
         return self
 
@@ -299,7 +309,7 @@ class VM:
 
     def wait_stable(self, secs=60, quiet=1.5, not_black=True):
         """Wait until the screen stops changing (two equal captures `quiet` apart) and, by default, shows something. Returns the image."""
-        end, last = time.time() + secs, None
+        end, last = time.time() + slow(secs), None
         while time.time() < end:
             img = self.shot()
             b = img.resize((160, 100)).tobytes()
@@ -330,7 +340,7 @@ class VM:
         self.tap(hits[n][0] + dx, hits[n][1] + dy, **kw)
 
     def wait_text(self, text, secs=60):
-        end = time.time() + secs
+        end = time.time() + slow(secs)
         while time.time() < end:
             hits = self.find(text)
             if hits: return hits
@@ -348,8 +358,8 @@ class VM:
         except ValueError: return out
 
     def state(self, secs=0, until=None, why=""):
-        """The Manager's /api/state; with `until` (a function of the state), poll until it is true or `secs` pass."""
-        end = time.time() + secs
+        """The Manager's /api/state; with `until` (a function of the state), poll until it is true or `secs` (scaled) pass."""
+        end = time.time() + slow(secs)
         while True:
             st = self.api("state", check=False)
             if isinstance(st, dict) and (until is None or until(st)): return st

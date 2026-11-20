@@ -86,7 +86,7 @@ class T:
 
     def wait_done(self, secs=420):
         """Wait for the apply script to finish and MPC to be running again; returns (result lines, apply.log)."""
-        end = time.time() + secs
+        end = time.time() + emu.slow(secs)
         while time.time() < end:
             lg = self.vm.read(PM + "/apply.log")
             if "== done" in lg and self.vm.sh("pidof MPC", check=False)[0] == 0: break
@@ -129,7 +129,7 @@ class T:
 
     def settings_when(self, ok, secs=90):
         """MPC.settings once ok(text) holds, or as it is after `secs`: MPC rewrites it as it starts, later on a slow host."""
-        end = time.time() + secs
+        end = time.time() + emu.slow(secs)
         while True:
             txt = self.settings_text()
             if ok(txt) or time.time() > end: return txt
