@@ -202,8 +202,8 @@ static const char *web_post(mgr_t *m, const char *path) {   /* "" done, else why
         } else err = "not possible now";
     } else if (!strncmp(path, "/api/apply", 10)) {   /* the page asked first: the second call is the restart prompt's GO */
         if (m->ready) { m->ready = 0; post(m, J_LAUNCH); }
-        else if (count_queued(m) && !m->dev->problem[0]) post(m, J_PREPARE);
-        else err = "nothing queued";
+        else if (can_apply(m)) post(m, J_PREPARE);
+        else err = count_queued(m) ? "installing is turned off on this MPC" : "nothing queued";
     } else err = "unknown request";
     m->rev++;
     pthread_mutex_unlock(&m->mu);
