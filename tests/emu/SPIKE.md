@@ -40,11 +40,22 @@ Host: x86_64 Linux, Docker, QEMU 10 in a container, TCG only (no KVM for ARM gue
   binds every trigger to its parameter twice, a "Mouse Down" action and a Button component; MPC runs the first when the finger lands
   and the second when it lifts, and the 250 ms double-press window only hides that for a quick tap. Fixed in `vst/skin_taps.py`.
 
+* The same firmware images boot under other identities. `mpc-x-391` (ACV5, MPC X) and `mpc-oneg2-3100` (ACVA3, MPC One Gen 2) were
+  built and run: the Manager loads, draws and installs on both. The One Gen 2 shows its first-run screens in another colour, so
+  those are recognised by their text, not by a pixel.
+* QEngine sets its own `LD_PRELOAD` in a drop-in named `override.conf`. On the Gen2 image that file is on a read-only root, the
+  addin installer therefore writes its own drop-in (`90-mpc-addins.conf`), and `override.conf` sorts after it and wins: the install
+  reports success and MPC starts without the addin. The harness renames the emulator's drop-in so it sorts first. A device with a
+  read-only LD_PRELOAD drop-in that sorts after `90-` would behave the same; none is known.
+* One copy of an instance runs at a time (QEngine's own rule), so two builds are tested on the same instance one after the other.
+
 ## What the emulator cannot show
 
 * MPC OS 3.10.1 (the `VST2 Plugins` folder and "External Plugin Support"): QEngine does not boot it and no image was at hand. The
   Manager's 3.10.1 logic can still be driven (it keys off a line in MPC.settings), but MPC itself will not load from that folder.
 * Real drives: SD cards, USB sticks, the SATA bay, Akai's automounter options, a card pulled mid-install. Drives here are loop images.
-* Device identities other than the two built (Force, X, One, Key, Live II and so on) unless an instance is built for each.
+* Device identities other than the ones built unless an instance is built for each, and whatever differs between models outside
+  the firmware image: which drive is mounted where (a One Gen 2 keeps its content on `/storage`, a Live III on `/nvme`), how full it
+  is, what mods are installed. A Force has its own firmware, which was not at hand.
 * Timing. TCG on x86 is several times slower than the hardware and has different I/O behaviour; nothing here measures performance.
 * Audio, MIDI and the control surface beyond what QEngine stubs.

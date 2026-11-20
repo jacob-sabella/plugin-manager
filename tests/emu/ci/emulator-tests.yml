@@ -1,0 +1,84 @@
+# Emulator tests: the Plugin Manager inside real MPC firmware (tests/emu). A PROPOSAL: this file is kept in tests/emu/ci/ so that
+# nothing runs it. To use it, copy it to .github/workflows/ and set up the runner described in tests/emu/CI.md.
+#
+# It runs on a self-hosted runner that already holds Akai's update images (they are not redistributable, so they are neither in this
+# repository nor in any GitHub cache or artifact). Any x86-64 or arm64 Linux box with Docker works; nothing needs root or KVM.
+name: emulator tests
+
+on:
+  schedule:
+    - cron: "17 3 * * *"          # nightly
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: "Scenario names (space separated; empty: all)"
+        default: ""
+      instances:
+        description: "QEngine instances (space separated)"
+        default: "mpc-g1-391 mpc-g2-3100"
+  # Per pull request: only for branches of this repository (a fork's PR must never reach a runner that holds the firmware), and only
+  # the short set. Leave this out until the nightly run has been stable for a while.
+  # pull_request:
+  #   paths: ["src/**", "vst/**", "tests/emu/**"]
+
+concurrency:
+  group: emulator-tests
+  cancel-in-progress: false       # one run at a time: the runner has one copy of each instance
+
+permissions:
+  contents: read
+
+jobs:
+  emulator:
+    # if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, linux, pm-emu]
+    timeout-minutes: 120
+    env:
+      FIRMWARE_DIR: /srv/pm-emu/firmware        # MPC-3.9.1-Gen1-update.img, MPC-3.10.0-Gen2-update.img (sha256 in tests/emu/CI.md)
+      QENGINE: /srv/pm-emu/QEngine              # a checkout at the commit named in tests/emu/CI.md, with build/instances/ kept between runs
+      MPC_VST: ${{ github.workspace }}/mpc-vst-plugins
+      SKIN_CACHE: /srv/pm-emu/skin              # vst/build/skin, about 15 minutes to build, keyed below
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: plugin-manager }
+      - uses: actions/checkout@v4
+        with: { repository: open-mpc/mpc-vst-plugins, path: mpc-vst-plugins }
+
+      - name: Instances (built once, from the images on this runner)
+        working-directory: plugin-manager
+        run: |
+          docker build -q -t pm-emu-host tests/emu
+          [ -d "$QENGINE/build/instances/mpc-g1-391" ]  || tests/emu/qe scripts/build_scripts/new_instance.sh --name mpc-g1-391  --product-code ACVA --firmware "$FIRMWARE_DIR/MPC-3.9.1-Gen1-update.img"
+          [ -d "$QENGINE/build/instances/mpc-g2-3100" ] || tests/emu/qe scripts/build_scripts/new_instance.sh --name mpc-g2-3100 --product-code ACVG --firmware "$FIRMWARE_DIR/MPC-3.10.0-Gen2-update.img"
+
+      - name: Skin (reused while its inputs are unchanged)
+        working-directory: plugin-manager
+        run: |
+          key=$(cat vst/layout.conf vst/skin.css vst/vst.json vst/params.json vst/make_*.py vst/skin_post.py vst/skin_taps.py vst/images/* | sha256sum | cut -c1-16)
+          if [ -d "$SKIN_CACHE/$key" ]; then mkdir -p vst/build && cp -a "$SKIN_CACHE/$key" vst/build/skin
+          else vst/build_themes.sh armv7 && mkdir -p "$SKIN_CACHE" && cp -a vst/build/skin "$SKIN_CACHE/$key"; fi
+
+      - name: Build the Manager and the fixture
+        working-directory: plugin-manager
+        run: tests/emu/build.sh
+
+      - name: Scenarios
+        working-directory: plugin-manager
+        run: |
+          args=(); for i in ${{ inputs.instances || 'mpc-g1-391 mpc-g2-3100' }}; do args+=(-i "$i"); done
+          for k in ${{ inputs.scenarios }}; do args+=(-k "$k"); done
+          tests/emu/run.sh "${args[@]}"
+
+      - name: Results (screen captures and the logs the Manager wrote on the device; no firmware files)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-results
+          path: |
+            plugin-manager/tests/emu/results/**/summary.json
+            plugin-manager/tests/emu/results/**/*.png
+            plugin-manager/tests/emu/results/**/*.log
+            plugin-manager/tests/emu/results/**/*-result
+            plugin-manager/tests/emu/results/**/*-device.txt
+            plugin-manager/tests/emu/results/*.log
+          retention-days: 14
