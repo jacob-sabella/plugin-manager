@@ -7,10 +7,11 @@ here="$(cd "$(dirname "$0")" && pwd)"
 inst=(); rest=()
 while [ $# -gt 0 ]; do case "$1" in -i) inst+=("$2"); shift 2 ;; *) rest+=("$1"); shift ;; esac; done
 [ ${#inst[@]} -gt 0 ] || inst=(mpc-g1-391 mpc-g2-3100)
+label=work; for ((k = 0; k < ${#rest[@]}; k++)); do [ "${rest[k]}" = --label ] && label="${rest[k+1]}"; done
 mkdir -p "$here/results"
 pids=()
 for i in "${inst[@]}"; do
-    ( "$here/in-container" "pm-emu-$i" python3 run.py "$i" ${rest[@]+"${rest[@]}"} 2>&1 | tee "$here/results/$i.log" | grep --line-buffered -E "^[0-9:]+ ($i|.*FAIL|      -)|Traceback|Error" ; exit "${PIPESTATUS[0]}" ) &
+    ( "$here/in-container" "pm-emu-$i-$label" python3 run.py "$i" ${rest[@]+"${rest[@]}"} 2>&1 | tee "$here/results/$i-$label.log" | grep --line-buffered -E "^[0-9:]+ $i |^      - |Traceback" ; exit "${PIPESTATUS[0]}" ) &
     pids+=($!)
 done
 rc=0

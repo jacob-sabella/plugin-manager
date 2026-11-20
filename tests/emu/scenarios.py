@@ -132,3 +132,39 @@ def long_press(t):
             t.queue("emu-probe", "install" if want == "q_install" else "cancel")
         want = "install" if want == "q_install" else "q_install"
     t.shot("after-presses")
+
+
+def is_dark(t, name):
+    """The Manager's screen is drawn with the dark skin (its page background, away from any text)."""
+    img = t.vm.shot(None)
+    t.shot(name)
+    r, g, b = img.getpixel((640, 650))
+    return r + g + b < 300
+
+
+@scenario
+def theme_survives_update(t):
+    """A user who chose the dark theme still has it after the Manager updates itself, with no second restart asked for.
+    (The package brings the light skin; the swap to the chosen one used to wait for another restart prompt after the update.)"""
+    own = "%s/%s" % (t.synths, MANAGER)
+    t.check(not is_dark(t, "light-at-start"), "the fresh install shows the light theme")
+    t.vm.tap(532, 770)                                   # SETTINGS
+    hits = t.vm.find("THEME")
+    if not t.check(hits, "SETTINGS shows THEME"): return
+    t.vm.tap(1160, hits[0][1] + 16)                      # its CHANGE button
+    t.eq(t.vm.read(t.settings.split("/Settings/")[0] + "/.openmpcpm-theme").strip(), "dark", "the saved theme choice")
+    res, lg = t.apply()
+    t.eq(t.vm.read(own + "/Plugin Skins/.theme").strip(), "dark", "the skin in place after applying the theme")
+    st = t.reopen()
+    t.check(is_dark(t, "dark-chosen"), "the dark theme shows after the restart")
+
+    t.queue("plugin-manager-g2")
+    res, lg = t.apply(secs=900)
+    t.eq(res.get("plugin-manager-g2", ("",))[0], "ok", "result of the self-update")
+    t.eq(t.vm.read(own + "/Plugin Skins/.theme").strip(), "dark", "the skin in place after the self-update")
+    st = t.reopen()
+    t.eq(st["version"], "9.0.1", "the version MPC loads after the update")
+    t.check(is_dark(t, "dark-after-update"), "the dark theme shows after the update")
+    time.sleep(8)                                        # the old build prepared a second restart here
+    st = t.state()
+    t.eq((st.get("ready"), st.get("queued")), (0, 0), "nothing is waiting for another restart (ready, queued)")
