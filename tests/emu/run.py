@@ -127,6 +127,14 @@ class T:
     def settings_text(self):
         return self.vm.read(self.settings)
 
+    def settings_when(self, ok, secs=90):
+        """MPC.settings once ok(text) holds, or as it is after `secs`: MPC rewrites it as it starts, later on a slow host."""
+        end = time.time() + secs
+        while True:
+            txt = self.settings_text()
+            if ok(txt) or time.time() > end: return txt
+            time.sleep(3)
+
     def settings_ok(self, what="MPC.settings"):
         """MPC.settings is whole: well-formed XML with its PROPERTIES root."""
         rc, out = self.vm.sh("tail -c 14 %s; echo; wc -c < %s" % (self.settings, self.settings), check=False)

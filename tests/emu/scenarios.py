@@ -54,7 +54,7 @@ def plugin_install_update_remove(t):
     res, lg = t.apply()
     t.eq(res.get("emu-probe"), ("ok", "install 1.0.1"), "result of the update (the result file says install for an update too)")
     t.has(t.vm.read(folder + "/mpc-plugin.json"), '"version": "1.0.1"', "the folder's manifest")
-    t.eq(t.settings_text().count(folder + "/emu_probe.so"), 1, "MPC.settings lists the plugin once")
+    t.eq(t.settings_when(lambda x: x.count(folder + "/emu_probe.so") == 1).count(folder + "/emu_probe.so"), 1, "MPC.settings lists the plugin once")
 
     st = t.reopen()
     t.eq(t.plugin("emu-probe", st).get("installed"), "1.0.1", "the Manager sees 1.0.1")

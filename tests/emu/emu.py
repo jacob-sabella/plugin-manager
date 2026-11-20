@@ -278,7 +278,12 @@ class VM:
     def shot(self, path=None):
         """The screen as a PIL image (saved to path when given)."""
         c = self._vnc()
-        c.refreshScreen()
+        try: c.refreshScreen()
+        except TimeoutError:                # a slow host (a 2-core CI runner) can miss the 30 s: connect again, once
+            log("%s/%s: VNC timed out, reconnecting" % (self.instance, self.stage))
+            try: self.vnc.disconnect()
+            except Exception: pass
+            self.vnc = None; c = self._vnc(); c.refreshScreen()
         img = c.screen.convert("RGB")
         if path:
             os.makedirs(os.path.dirname(path), exist_ok=True)
