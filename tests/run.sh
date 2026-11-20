@@ -162,6 +162,27 @@ test -f "/nvme/Synths/acme - VST - Oldie/oldie.so"   # the old copy stays: saved
 ! test -e "/nvme/VST2 Plugins/acme - VST - RomsOnly"
 grep -qF "\"uid\": \"0x4f6c6469\"" "/nvme/VST2 Plugins/acme - VST - Oldie/plugin.json"
 grep -qF "\"file64\": \"oldie.so\"" "/nvme/VST2 Plugins/acme - VST - Oldie/plugin.json"
+# #46: the plugin.json step never names a binary that is not in the folder. A universal package brings its own plugin.json
+# (file32 + file64); the element found for it (here plugin-meta.xml, on the One+ of the report, the old MPC.settings entry) names another file.
+J="/nvme/VST2 Plugins/acme - VST - Uni"; mkdir -p "$J"; echo so > "$J/uni-arm32.so"; echo so > "$J/uni-arm64.so"
+printf "{\"name\": \"Uni\", \"uid\": \"0x556e6931\", \"file32\": \"uni-arm32.so\", \"file64\": \"uni-arm64.so\"}\n" > "$J/plugin.json"; cp "$J/plugin.json" /tmp/uni.keep
+printf "<PLUGIN name=\"Uni\" manufacturer=\"acme\" uid=\"556e6931\" file=\"%%payload-path%%/acme - VST - Uni/uni.so\" isInstrument=\"1\" numInputs=\"0\" numOutputs=\"2\"/>\n" > "$J/plugin-meta.xml"
+ARCH=aarch64 sh /tmp/openmpc-pm/vst2.sh --json "$J" > /tmp/vst2-keep.out 2>&1 || { cat /tmp/vst2-keep.out; echo "FAIL: a folder with a good plugin.json is an error"; exit 1; }
+cmp -s "$J/plugin.json" /tmp/uni.keep || { cat "$J/plugin.json"; echo "FAIL: plugin.json was rewritten to name a binary that is not in the folder"; exit 1; }
+grep -qF "kept $J/plugin.json" /tmp/vst2-keep.out
+rm "$J/plugin.json"   # and with none to keep: an error, and nothing written
+if ARCH=aarch64 sh /tmp/openmpc-pm/vst2.sh --json "$J" > /tmp/vst2-none.out 2>&1; then echo "FAIL: no binary, no plugin.json, and no error"; exit 1; fi
+[ ! -e "$J/plugin.json" ] || { echo "FAIL: a plugin.json naming a missing binary was written"; exit 1; }
+rm -rf "$J"
+# #46: an item that failed leaves the plugin.json of the folder alone (the step ran after the failure and rewrote it)
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /tmp/vst2-faily.out; grep -q "apply_state 3" /tmp/vst2-faily.out
+F="/nvme/VST2 Plugins/Faily dir"; mkdir -p "$F"; echo so > "$F/faily.so"; echo "{\"mine\": 1}" > "$F/plugin.json"
+printf "<PLUGIN name=\"Faily\" manufacturer=\"acme\" uid=\"4661696c\" file=\"%%payload-path%%/Faily dir/faily.so\" isInstrument=\"1\" numInputs=\"0\" numOutputs=\"2\"/>\n" > "$F/plugin-meta.xml"
+grep -qF -- "--json '"'"'$F'"'"'" /tmp/openmpc-pm/apply.sh
+ARCH=aarch64 sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|fail|" /tmp/openmpc-pm/result
+[ "$(cat "$F/plugin.json")" = "{\"mine\": 1}" ] || { cat "$F/plugin.json"; echo "FAIL: plugin.json was rewritten after the item failed"; exit 1; }
+rm -rf "$F"
 # the drive menu: two drives (internal + the stick; the Akai mounts are not offered), a pick is the target and is remembered
 rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
 sh tests/devices/gen2-3101-vst2.sh
@@ -442,25 +463,79 @@ rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
 mkdir -p "$T/Faily dir" && echo old > "$T/Faily dir/old"; rm -rf "$T/Faily dir/partial"
 PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
 grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result
-[ -f "$T/Faily dir/old" ] && [ ! -e "$T/Faily dir/partial" ] && [ ! -e "$T/.pm-snap-faily" ] || { echo "FAIL: the big-folder rollback"; exit 1; }
+[ -f "$T/Faily dir/old" ] && [ ! -e "$T/Faily dir/partial" ] && [ ! -e "$T/.pm-snap-faily" ] && [ ! -e "$T/.pm-safe-faily" ] && [ ! -e "$T/.pm-failed-faily" ] || { echo "FAIL: the big-folder rollback"; exit 1; }
+# #46: what a power cut leaves behind does not block the next update.
+# a safety copy from an older Manager (.pm-snap-<id>, maybe half a copy): the folder is there, so the copy is dropped and the item runs
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
-# #46: a safety copy an earlier update left (cut off by a power cycle) never blocks: with the folder there it is removed and the update runs
-mkdir -p "$T/Faily dir"; echo old > "$T/Faily dir/old"; mkdir -p "$T/.pm-snap-faily"; echo partial > "$T/.pm-snap-faily/half"
+rm -rf "$T/Faily dir"; mkdir -p "$T/Faily dir"; echo old > "$T/Faily dir/old"; mkdir -p "$T/.pm-snap-faily"; echo half > "$T/.pm-snap-faily/old"
 PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
-grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result; exit 1; }
+grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result; echo "FAIL: a leftover safety copy still blocks the item"; exit 1; }
 grep -qF "removed the safety copy an earlier update left" /tmp/openmpc-pm/apply.log
-[ -f "$T/Faily dir/old" ] && [ ! -e "$T/Faily dir/half" ] && [ ! -e "$T/.pm-snap-faily" ] && [ ! -e "$T/.pm-snap-faily.done" ] || { echo "FAIL: leftover safety copy"; exit 1; }
-# the folder gone and a complete copy left (<snap>.done): put back, then updated as usual
+[ ! -e "$T/.pm-snap-faily" ] && [ ! -e "$T/.pm-snap-faily.done" ] && [ ! -e "$T/Faily dir/half" ] && [ "$(cat "$T/Faily dir/old")" = old ] || { echo "FAIL: the old leftover copy"; exit 1; }
+# a copy that was still being made (.part): dropped
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
-mv "$T/Faily dir" "$T/.pm-snap-faily"; : > "$T/.pm-snap-faily.done"
+mkdir -p "$T/.pm-safe-faily.part/Faily dir"; echo half > "$T/.pm-safe-faily.part/Faily dir/old"
 PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
-grep -qF "back from the safety copy an earlier update left" /tmp/openmpc-pm/apply.log && [ -f "$T/Faily dir/old" ] && [ ! -e "$T/.pm-snap-faily" ] || { echo "FAIL: complete safety copy not put back"; exit 1; }
-# the folder gone and an incomplete copy: nothing is guessed, the copy stays for the user
+grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result
+[ ! -e "$T/.pm-safe-faily.part" ] && [ ! -e "$T/.pm-safe-faily" ] && [ "$(cat "$T/Faily dir/old")" = old ] || { echo "FAIL: the unfinished copy"; exit 1; }
+# a finished copy beside a folder the installer was half way through: the copy is put back first (for any plugin in that location)
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+rm -rf "$T/Faily dir"; mkdir -p "$T/Faily dir" "$T/.pm-safe-faily/Faily dir"; echo broken > "$T/Faily dir/halfway"; echo old > "$T/.pm-safe-faily/Faily dir/old"
+mkdir -p "$T/.pm-safe-other/Other dir"; echo mine > "$T/.pm-safe-other/Other dir/keep"
+PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result
+[ "$(cat "$T/Faily dir/old")" = old ] && [ ! -e "$T/Faily dir/halfway" ] && [ ! -e "$T/.pm-safe-faily" ] || { echo "FAIL: the finished copy was not put back"; exit 1; }
+[ "$(cat "$T/Other dir/keep")" = mine ] && [ ! -e "$T/.pm-safe-other" ] || { echo "FAIL: another plugin'"'"'s finished copy was not put back"; exit 1; }
+rm -rf "$T/Other dir"
+# a drive that reports far more than the files hold (exFAT with big clusters: 932 MB for the Manager'"'"'s 70): sized by its contents, so
+# the copy goes to memory, not to the drive
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+mkdir -p /tmp/fakebin; printf "#!/bin/sh\necho \"954000\t\$3\"\n" > /tmp/fakebin/du; chmod +x /tmp/fakebin/du
+PATH=/tmp/fakebin:$PATH sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result
+grep -qF -- "-- faily: safe copy in memory" /tmp/openmpc-pm/apply.log || { cat /tmp/openmpc-pm/apply.log; echo "FAIL: a small folder on a big-cluster drive is copied on the drive"; exit 1; }
+[ -f "$T/Faily dir/old" ] || { echo "FAIL: the rollback from memory"; exit 1; }
+# a copy from Manager 1.3.7, marked complete, with the folder there: removed with its marker, the folder is what stays
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+mkdir -p "$T/.pm-snap-faily"; echo stale > "$T/.pm-snap-faily/stale"; : > "$T/.pm-snap-faily.done"
+PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result
+[ "$(cat "$T/Faily dir/old")" = old ] && [ ! -e "$T/Faily dir/stale" ] && [ ! -e "$T/.pm-snap-faily" ] && [ ! -e "$T/.pm-snap-faily.done" ] || { echo "FAIL: a marked copy beside the folder"; exit 1; }
+# the folder gone and a complete copy left by 1.3.7 (<snap>.done): put back, then updated as usual; what its rollback had moved aside goes
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+mv "$T/Faily dir" "$T/.pm-snap-faily"; : > "$T/.pm-snap-faily.done"; mkdir -p "$T/.pm-failed-faily"; echo bad > "$T/.pm-failed-faily/bad"
+PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -qF "back from the safety copy an earlier update left" /tmp/openmpc-pm/apply.log && [ -f "$T/Faily dir/old" ] && [ ! -e "$T/.pm-snap-faily" ] && [ ! -e "$T/.pm-snap-faily.done" ] && [ ! -e "$T/.pm-failed-faily" ] || { echo "FAIL: complete safety copy not put back"; exit 1; }
+grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result; echo "FAIL: the item did not run after the copy was put back"; exit 1; }
+# the folder gone and an unmarked copy (a Manager before 1.3.7, or cut off mid-copy): nothing is guessed, the item fails and the copy stays
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
 mv "$T/Faily dir" "$T/.pm-snap-faily"
 PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
-grep -q "^faily|fail|an earlier update was cut off and left an incomplete safety copy" /tmp/openmpc-pm/result && [ -f "$T/.pm-snap-faily/old" ] || { echo "FAIL: incomplete safety copy"; exit 1; }
-rm -rf "$T/.pm-snap-faily" "$T/Faily dir"
+grep -q "^faily|fail|an earlier update was cut off and left an incomplete safety copy" /tmp/openmpc-pm/result && [ -f "$T/.pm-snap-faily/old" ] && [ ! -e "$T/Faily dir" ] || { echo "FAIL: incomplete safety copy"; exit 1; }
+mv "$T/.pm-snap-faily" "$T/Faily dir"
+# a marker whose copy is gone (cut off right after a put-back) is cleared
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+: > "$T/.pm-snap-faily.done"
+PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+[ ! -e "$T/.pm-snap-faily.done" ] && [ "$(cat "$T/Faily dir/old")" = old ] || { echo "FAIL: the orphan marker"; exit 1; }
+# a rollback whose put-back fails keeps the failed folder and the whole copy; the next update puts the copy back
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+mkdir -p /tmp/failmv; printf "#!/bin/sh\ncase \"\$1\" in *\"/.pm-safe-faily/\"*) exit 1 ;; esac\nexec /bin/mv \"\$@\"\n" > /tmp/failmv/mv; chmod +x /tmp/failmv/mv
+PATH=/tmp/failmv:$PATH PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -qF "could not put the old folder back" /tmp/openmpc-pm/apply.log && [ -d "$T/Faily dir" ] && [ -f "$T/.pm-safe-faily/Faily dir/old" ] && [ ! -e "$T/.pm-failed-faily" ] || { ls -la "$T"; echo "FAIL: a failed put-back"; exit 1; }
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+[ "$(cat "$T/Faily dir/old")" = old ] && [ ! -e "$T/Faily dir/partial" ] && [ ! -e "$T/.pm-safe-faily" ] && [ ! -e "$T/.pm-failed-faily" ] || { ls -la "$T"; echo "FAIL: the copy kept by a failed put-back"; exit 1; }
+# a copy on the drive needs twice the folder plus 64 MB, because the installer stages its own copy beside the target
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+mkdir -p /tmp/fakedf; printf "#!/bin/sh\necho \"100000\t\$3\"\n" > /tmp/fakedf/du; printf "#!/bin/sh\necho head\necho \"x 0 0 \$(cat /tmp/fakedf/free) 0 /\"\n" > /tmp/fakedf/df; chmod +x /tmp/fakedf/du /tmp/fakedf/df
+echo 265535 > /tmp/fakedf/free; PATH=/tmp/fakedf:$PATH PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|fail|not enough free space to keep a safe copy" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result; echo "FAIL: room for one copy passed the free-space check"; exit 1; }
+[ ! -e "$T/.pm-safe-faily" ] && [ ! -e "$T/.pm-safe-faily.part" ] && [ "$(cat "$T/Faily dir/old")" = old ] || { echo "FAIL: the refused copy"; exit 1; }
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
+echo 265536 > /tmp/fakedf/free; PATH=/tmp/fakedf:$PATH PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result; echo "FAIL: room for both copies was refused"; exit 1; }
+rm -rf "$T/.pm-snap-faily" "$T/.pm-snap-faily.done" "$T/Faily dir"
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
 mkdir -p "$T/Faily dir"; echo old > "$T/Faily dir/old"; cp "$T/Faily dir/old" /tmp/old.keep
 sh /tmp/openmpc-pm/apply.sh

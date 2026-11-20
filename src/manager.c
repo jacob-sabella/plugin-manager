@@ -2873,34 +2873,69 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "batch() { grep -q -- '-n)' \"$1\" && printf '%%s' -n; }   # older installers lack -n and restart MPC themselves\n"
                    "SETTINGS='%s'; SNAP='" WORK "/snap'; RES='" WORK "/result'\nrm -rf \"$SNAP\"; mkdir -p \"$SNAP\"; : > \"$RES\"\n"
                    /* item ID FOLDER cmd...: snapshot the plugin folder and MPC.settings, run cmd; on failure put both back and say why (DESIGN 7) */
-                   "item() {\n  id=$1; dir=$2; act=$3; ver=$4; shift 4; snap=''\n"
-                   /* a safety copy an earlier apply left (MPC power-cycled mid-copy, plugin-manager #46). Only a copy marked complete
-                    * (<snap>.done) is ever put back, and only when the plugin folder is gone; with the folder there it is just removed */
-                   "  if [ -n \"$dir\" ]; then old=\"$(dirname \"$dir\")/.pm-snap-$id\"\n"
-                   "    if [ -e \"$old\" ] && [ -d \"$dir\" ]; then rm -rf \"$old\" \"$old.done\"; echo \"removed the safety copy an earlier update left at $old\"\n"
-                   "    elif [ -e \"$old\" ] && [ -f \"$old.done\" ]; then mv \"$old\" \"$dir\" && rm -f \"$old.done\" && echo \"put $dir back from the safety copy an earlier update left\"\n"
-                   "    elif [ -e \"$old\" ]; then echo \"$id|fail|an earlier update was cut off and left an incomplete safety copy at $old\" >> \"$RES\"; return 1; fi\n"
-                   "  fi\n"
-                   /* a small folder is copied to RAM (WORK); a big one to a hidden sibling on its own drive, after a free-space check.
-                    * On its own drive the installer's staged copy needs as much room again, so twice the folder (plus 64 MB) must be free */
+                   /* What a power cut left in a plugin location (#46: a half-made copy blocked every later update, with no way to clear it).
+                    * A copy on the drive is made as .pm-safe-<id>.part and renamed when whole, so a .pm-safe-<id> is always whole: it is put
+                    * back, the folder it replaces moved aside until it is. A .part is dropped. A .pm-snap-<id> is from Manager 1.3.7 or older:
+                    * with the folder there it is removed; with the folder gone it is put back only if marked complete (<snap>.done, 1.3.7);
+                    * unmarked it may be half a copy (older Managers wrote no marker), so it stays and the item is a reported failure. */
+                   "heal() {\n  loc=$1; id=$2; dir=$3\n"
+                   "  for s in \"$loc\"/.pm-safe-*; do\n"
+                   "    [ -d \"$s\" ] || continue\n"
+                   "    case $s in *.part) rm -rf \"$s\"; echo \"-- dropped an unfinished safe copy: $s\"; continue ;; esac\n"
+                   "    bad=\"$loc/.pm-failed-${s##*/.pm-safe-}\"\n"
+                   "    for f in \"$s\"/*; do\n"
+                   "      [ -d \"$f\" ] || continue; t=\"$loc/${f##*/}\"; rm -rf \"$bad\"\n"
+                   "      if [ -e \"$t\" ] && ! mv \"$t\" \"$bad\"; then echo \"-- could not move $t aside; the safe copy stays at $s\"; continue; fi\n"
+                   "      if mv \"$f\" \"$t\"; then rm -rf \"$bad\"; echo \"-- put back ${f##*/} from the safe copy of an update that did not finish\"\n"
+                   "      else [ -e \"$bad\" ] && mv \"$bad\" \"$t\"; echo \"-- could not put back ${f##*/}; the safe copy stays at $s\"; fi\n"
+                   "    done\n"
+                   "    rmdir \"$s\" 2>/dev/null\n"
+                   "  done\n"
+                   "  if [ -e \"$loc/.pm-safe-$id\" ]; then echo \"$id|fail|could not put back the safe copy at $loc/.pm-safe-$id\" >> \"$RES\"; return 1; fi\n"
+                   "  old=\"$loc/.pm-snap-$id\"\n"
+                   "  if [ -e \"$old\" ] && [ -d \"$dir\" ]; then rm -f \"$old.done\"; rm -rf \"$old\"; echo \"removed the safety copy an earlier update left at $old\"\n"
+                   "  elif [ -e \"$old\" ] && [ -f \"$old.done\" ]; then\n"
+                   "    if mv \"$old\" \"$dir\"; then rm -f \"$old.done\"; rm -rf \"$loc/.pm-failed-$id\"; echo \"put $dir back from the safety copy an earlier update left\"\n"
+                   "    else echo \"$id|fail|could not put back the safety copy at $old\" >> \"$RES\"; return 1; fi\n"
+                   "  elif [ -e \"$old\" ]; then echo \"$id|fail|an earlier update was cut off and left an incomplete safety copy at $old\" >> \"$RES\"; return 1\n"
+                   "  else rm -f \"$old.done\"; fi\n}\n"
+                   "item() {\n  id=$1; dir=$2; act=$3; ver=$4; shift 4; snap=''; side=''\n"
+                   "  if [ -n \"$dir\" ]; then heal \"$(dirname \"$dir\")\" \"$id\" \"$dir\" || return 1; fi\n"
+                   /* A small folder is copied to RAM (WORK); a big one to a hidden sibling on its own drive, after a free-space check.
+                    * "Small" is by what the files hold (ls), not by what the drive says they take (du): on an exFAT card with big clusters
+                    * the Manager's 70 MB read as 932 MB, and copying that on the card took minutes with a dark screen (#46). The room needed
+                    * on the drive is by du, since that is what a copy takes there, and twice it: the installer stages its own copy there too. */
                    "  if [ -n \"$dir\" ] && [ -d \"$dir\" ]; then\n"
-                   "    sz=$(du -sk \"$dir\" 2>/dev/null | cut -f1); sz=${sz:-0}\n"
-                   "    if [ \"$sz\" -le \"${PM_SNAP_KB:-49152}\" ]; then snap=\"$SNAP/$id.dir\"; need=$((sz + 65536)); else snap=\"$(dirname \"$dir\")/.pm-snap-$id\"; need=$((2 * sz + 65536)); fi\n"
-                   "    free=$(df -Pk \"$(dirname \"$snap\")\" 2>/dev/null | awk 'NR==2 {print $4}')\n"
-                   "    if [ \"${free:-0}\" -lt $need ]; then echo \"$id|fail|not enough free space to keep a safe copy\" >> \"$RES\"; return 1; fi\n"
-                   "    echo \"-- safety copy of $dir ($((sz / 1024)) MB), MPC starts again when the update is done\"\n"
-                   "    cp -a \"$dir\" \"$snap\" && : > \"$snap.done\" || { rm -rf \"$snap\" \"$snap.done\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
+                   "    sz=$(ls -lR \"$dir\" 2>/dev/null | awk '{ s += $5 } END { print int(s / 1024) + 1 }'); sz=${sz:-0}\n"
+                   "    cap=${PM_SNAP_KB:-49152}; mem=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null)\n"
+                   "    [ -z \"${PM_SNAP_KB+x}\" ] && [ \"${mem:-0}\" -ge $((sz * 2 + 131072)) ] && cap=196608   # MPC is stopped: its memory is free\n"
+                   "    if [ \"$sz\" -le \"$cap\" ]; then snap=\"$SNAP/$id.dir\"; need=$sz; echo \"-- $id: safe copy in memory ($((sz / 1024)) MB)\"\n"
+                   "    else side=\"$(dirname \"$dir\")/.pm-safe-$id\"; snap=\"$side/${dir##*/}\"; copy=$(du -sk \"$dir\" 2>/dev/null | cut -f1); copy=${copy:-$sz}; need=$((2 * copy))\n"
+                   "      echo \"-- $id: safe copy on the drive ($((copy / 1024)) MB), MPC starts again when the update is done\"; fi\n"
+                   "    free=$(df -Pk \"$(dirname \"${side:-$snap}\")\" 2>/dev/null | awk 'NR==2 {print $4}')\n"
+                   "    if [ \"${free:-0}\" -lt $((need + 65536)) ]; then echo \"$id|fail|not enough free space to keep a safe copy\" >> \"$RES\"; return 1; fi\n"
+                   "    if [ -n \"$side\" ]; then\n"
+                   "      rm -rf \"$side.part\"; mkdir -p \"$side.part\" && cp -a \"$dir\" \"$side.part/\" &\n"
+                   "      cpid=$!; n=0; while kill -0 $cpid 2>/dev/null; do sleep 1; n=$((n + 1)); [ $((n %% 5)) -eq 0 ] && echo \"   $(du -sk \"$side.part\" 2>/dev/null | cut -f1) of $copy KB copied\"; done\n"
+                   "      wait $cpid && sync && mv \"$side.part\" \"$side\" || { rm -rf \"$side.part\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
+                   "    else cp -a \"$dir\" \"$snap\" || { rm -rf \"$snap\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
+                   "    fi\n"
                    "  fi\n"
                    "  cp -p \"$SETTINGS\" \"$SNAP/$id.settings\" 2>/dev/null\n"
                    "  out=$(\"$@\" 2>&1); rc=$?\n  pidof MPC >/dev/null && quiesce   # an installer without -n started MPC again: MPC starts once, at the end\n"
-                   "  if [ $rc -eq 0 ]; then echo \"$out\"; echo \"$id|ok|$act $ver\" >> \"$RES\"; [ -n \"$snap\" ] && rm -rf \"$snap\" \"$snap.done\"; rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
+                   /* the copy on the drive is renamed to .part before it is deleted: cut off half way through, it must not read as a whole one */
+                   "  if [ $rc -eq 0 ]; then echo \"$out\"; echo \"$id|ok|$act $ver\" >> \"$RES\"\n"
+                   "    if [ -n \"$side\" ]; then mv \"$side\" \"$side.part\"; rm -rf \"$side.part\" \"$side\"; elif [ -n \"$snap\" ]; then rm -rf \"$snap\"; fi\n"
+                   "    rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
                    "  echo \"$out\"\n"
-                   /* roll back: the failed folder is moved aside (not deleted) until the safety copy is back in its place */
-                   "  if [ -n \"$snap\" ] && [ -f \"$snap.done\" ]; then\n"
-                   "    bad=\"$(dirname \"$dir\")/.pm-failed-$id\"; rm -rf \"$bad\"; [ -e \"$dir\" ] && mv \"$dir\" \"$bad\"\n"
-                   "    case $snap in \"$SNAP\"/*) cp -a \"$snap\" \"$dir\" ;; *) mv \"$snap\" \"$dir\" ;; esac\n"
-                   "    if [ $? -eq 0 ]; then rm -rf \"$bad\" \"$snap\" \"$snap.done\"\n"
-                   "    else rm -rf \"$dir\"; [ -e \"$bad\" ] && mv \"$bad\" \"$dir\"; echo \"-- $id: could not put the old folder back; the safety copy stays at $snap\"; fi\n"
+                   /* roll back: the failed folder is moved aside (not deleted) until the safety copy is back in its place. The copy on the
+                    * drive goes back by a rename, so a power cut here leaves a whole .pm-safe-<id> for heal */
+                   "  if [ -n \"$snap\" ] && [ -d \"$snap\" ]; then\n"
+                   "    bad=\"$(dirname \"$dir\")/.pm-failed-$id\"; rm -rf \"$bad\"\n"
+                   "    if [ -e \"$dir\" ] && ! mv \"$dir\" \"$bad\"; then echo \"-- $id: could not move the failed folder aside; the safety copy stays at ${side:-$snap}\"\n"
+                   "    elif if [ -n \"$side\" ]; then mv \"$snap\" \"$dir\"; else cp -a \"$snap\" \"$dir\"; fi; then\n"
+                   "      rm -rf \"$bad\"; if [ -n \"$side\" ]; then rmdir \"$side\"; else rm -rf \"$snap\"; fi\n"
+                   "    else rm -rf \"$dir\"; [ -e \"$bad\" ] && mv \"$bad\" \"$dir\"; echo \"-- $id: could not put the old folder back; the safety copy stays at ${side:-$snap}\"; fi\n"
                    "  elif [ -n \"$dir\" ] && [ -z \"$snap\" ]; then rm -rf \"$dir\"   # a new install: nothing was there before\n"
                    "  fi\n"
                    "  [ -f \"$SNAP/$id.settings\" ] && cp -p \"$SNAP/$id.settings\" \"$SETTINGS\"\n"
