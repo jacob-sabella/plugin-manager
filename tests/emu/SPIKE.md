@@ -26,13 +26,23 @@ Host: x86_64 Linux, Docker, QEMU 10 in a container, TCG only (no KVM for ARM gue
   fails; `/media/az01-internal` (the data partition) is used instead. On Gen2, QEngine does not emulate the NVMe drive, so `/nvme`,
   `/sdcard` and `/storage` exist but are unmounted; the harness adds a disk of its own to the VM and mounts it at `/nvme`.
 * **No internal drive as far as MPC OS 3.10.1 is concerned.** A unit says in its device tree which internal drive is fitted
-  (`chosen/inmusic,nvme-fitted` on Gen2, `inmusic,internal-sd-fitted` on a Gen1 with the internal card), and 3.10.1 asks. QEngine
+  (`chosen/inmusic,nvme-fitted` on Gen2, `inmusic,acvs-emmc-content` on a Gen1 that keeps its content on the eMMC), and 3.10.1 asks. QEngine
   serves the product code and serial only (its BUILD_MPC.md says so), and without the flag MPC 3.10.1 never looks in
   `<internal drive>/VST2 Plugins` when it starts: the plugin list stays at Akai's own plugins with both Enhancements switches on,
   Splice says "Download directory could not be found", and yet the Developer panel's External Plugins page finds the plugin. The
-  harness binds a copy of `chosen` with the flag over the real one before MPC starts. On Gen1, 3.10.1 looks on `/sdcard` and not
-  on the data partition, so there the disk is mounted at `/sdcard`. (Found by access times: which `VST2 Plugins` folders MPC reads
-  when it starts.) A 1.2 GB drive drew "Low on temporary space" from MPC; the disk is 4 GB.
+  harness binds a copy of `chosen` with the flag over the real one before MPC starts. (Found by access times: with the flag MPC
+  reads each plugin's plugin.json in `<drive>/VST2 Plugins` within seconds of starting; without it the folders are listed but no
+  plugin.json is read.) A 1.2 GB drive drew "Low on temporary space" from MPC; the disk is 4 GB.
+* **Gen1 on 3.10.1 is laid out as an MPC Key 37.** Read from a Key 37 on 3.10.1.12 (ACVR, same `/usr/bin/MPC` as the Gen1
+  image): the device tree has `chosen/inmusic,acvs-emmc-content` and no `*-fitted` flag; `acva-emmc-content-generator` then
+  mounts the eMMC's content partition (ext4, about 25 GB) at `/storage`, `media-acvs-content.mount` binds it to
+  `/media/acvs-content`, and the plugins are in `/storage/VST2 Plugins`. `/sdcard` is an empty folder and `/media/az01-internal`
+  is the 2.5 GB `/data` partition with no `VST2 Plugins`. QEngine's eMMC image has no content partition, so the harness's disk
+  is mounted at `/storage` with that flag. (Until 2026-11-20 the harness put it at `/sdcard` with `inmusic,internal-sd-fitted`,
+  a layout no unit at hand had.) The MPC binary reads `chosen/inmusic,acvs-emmc-content`, `inmusic,emmc-drum-content`,
+  `inmusic,emmc-synths` and `inmusic,nvme-fitted`; it has no `internal-sd-fitted`. The instance stays ACVA (an MPC One) rather
+  than ACVR: with the flag, MPC on ACVA reads `/storage/VST2 Plugins` at start just as the Key 37 does, so the product code is not
+  what gates the scan; an ACVR instance (QEngine's new_instance.sh --product-code) was not built or tried.
 * **No `SynthContentLocations`.** A never-used MPC has not written that list to MPC.settings. Without it the Manager loads but MPC
   shows the generic parameter page instead of the skin, and the Manager reports "No install location". The harness adds the entry.
 * **First-run screens.** Gen2 shows a three-page welcome and three dialogs before the main screen; Gen1 shows one dialog. They are

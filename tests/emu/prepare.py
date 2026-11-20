@@ -29,8 +29,8 @@ QENGINE_DROPIN = ("d=/etc/systemd/system/acvs.service.d; if [ -f $d/override.con
 USER_DISK = "/dev/disk/by-id/virtio-pmuser"       # shim/qemu-system-aarch64 adds it: a real disk, since MPC is told to ignore loop devices
 
 
-# A unit says in its device tree which internal drive it has (chosen/inmusic,nvme-fitted on Gen2, inmusic,internal-sd-fitted on a
-# Gen1 with the internal card), and MPC asks: without the flag MPC OS 3.10.1 has no internal drive (it never looks in /nvme/VST2 Plugins
+# A unit says in its device tree which internal drive it has (chosen/inmusic,nvme-fitted on Gen2, inmusic,acvs-emmc-content on a
+# Gen1 that keeps its content on the eMMC, as an MPC Key 37 does: /storage, also /media/acvs-content), and MPC asks: without the flag MPC OS 3.10.1 has no internal drive (it never looks in /nvme/VST2 Plugins
 # when it starts, and Splice reports "Download directory could not be found"), though its Developer panel still finds the plugins
 # there. QEngine serves the product code and serial only, so the flag is added to what the kernel shows, before MPC starts and again
 # after every reboot.
@@ -50,8 +50,8 @@ def internal_drive(vm, where, flag):
     """The harness's own disk, formatted and mounted where this model keeps its internal drive, with the device tree flag for it; by
     units, so that it is there again after a reboot (the power-cut test reboots).
     The units go into /etc on the root filesystem itself. On Gen1, /etc is an overlay whose upper layer is on /data and is mounted
-    during boot, after systemd has read its units: a unit written through it is not there at the next boot, and the stock unit for
-    the mount point (sdcard.mount, which waits for the flag) wins. So the root is reached through a bind mount, under the overlay."""
+    during boot, after systemd has read its units: a unit written through it is not there at the next boot (and on Gen2 the
+    stock nvme.mount, which waits for the flag, wins). So the root is reached through a bind mount, under the overlay."""
     unit = where.strip("/").replace("/", "-") + ".mount"
     mnt = ("[Unit]\nDescription=The emulator's stand-in for the internal user drive\nRequires=pm-fitted.service\n"
            "After=pm-fitted.service\nBefore=acvs.service\n\n[Mount]\nWhat=%s\nWhere=%s\nType=ext4\n" % (USER_DISK, where))
@@ -70,9 +70,13 @@ def internal_drive(vm, where, flag):
 def storage(vm, ext):
     """Make the install location and return its Synths folder. `ext`: this firmware loads plugins from "<drive>/VST2 Plugins"."""
     if arch(vm) == "aarch64": return internal_drive(vm, "/nvme", "nvme-fitted")
-    # Gen1. MPC OS 3.10.1 looks for "VST2 Plugins" on the internal card (/sdcard) and on attached drives, not on the data partition
-    # (/media/az01-internal), which is where older firmware is content to load from once it is a content location.
-    if ext: return internal_drive(vm, "/sdcard", "internal-sd-fitted")
+    # Gen1. MPC OS 3.10.1 looks for "VST2 Plugins" on the content drive and on attached drives, not on the data partition
+    # (/media/az01-internal), which is where older firmware is content to load from once it is a content location. Laid out as a
+    # real MPC Key 37 on 3.10.1: an ext4 eMMC partition at /storage (acva-emmc-content-generator mounts it when the device tree
+    # has chosen/inmusic,acvs-emmc-content; media-acvs-content.mount binds it to /media/acvs-content), plugins in
+    # /storage/VST2 Plugins. QEngine's eMMC image has no such partition, so the harness's disk stands in for it; the unit written
+    # to /etc takes the place of the generated one.
+    if ext: return internal_drive(vm, "/storage", "acvs-emmc-content")
     vm.sh("mkdir -p /media/az01-internal/Synths; " + QENGINE_DROPIN)
     return "/media/az01-internal/Synths"
 
