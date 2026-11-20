@@ -8,7 +8,7 @@ what another did. Results go to tests/emu/results/<instance>/<build>/<scenario>/
 per scenario to results/<instance>/<build>/summary.json."""
 import argparse, hashlib, json, os, shutil, sys, time, traceback
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import emu, prepare
+import emu, machine, prepare
 from emu import Fail, log
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -181,8 +181,7 @@ def build_id(label):
     d = os.path.join(HERE, "build", "fx", label)
     for f in sorted(os.listdir(d)):
         if f.startswith("Plugin-Manager-G2-" + prepare.VERSION_A): h.update(open(os.path.join(d, f), "rb").read())
-    for f in ("prepare.py", "shim/qemu-system-aarch64"):          # what the machine is made of: a change here needs a new snapshot
-        h.update(open(os.path.join(HERE, f), "rb").read())
+    h.update(open(os.path.join(HERE, "prepare.py"), "rb").read())   # how the Manager is installed and opened
     return h.hexdigest()[:16]
 
 
@@ -193,6 +192,7 @@ def main():
     ap.add_argument("-k", action="append", default=[], help="run only scenarios whose name contains this (may repeat)")
     ap.add_argument("--prepare", action="store_true", help="make the ready snapshot again even if it is current")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--machine", action="store_true", help="make the machine snapshot (no Manager) if it is not current, and stop")
     a = ap.parse_args()
     import run, scenarios   # noqa: scenarios registers itself with the module named run, which is not this one when run as a script
     SCENARIOS[:] = run.SCENARIOS
@@ -200,6 +200,9 @@ def main():
     if a.list:
         for s in todo: print("%-28s %s" % (s.__name__, (s.__doc__ or "").strip().split("\n")[0]))
         return 0
+    if a.machine:                           # the machine snapshot alone: no Manager build, no fixture
+        try: log("%s: machine %s" % (a.instance, machine.ensure(a.instance, force=a.prepare)["id"])); return 0
+        finally: emu.shutdown()
     fx = emu.Fixture(a.label)
     rc = 1
     try:
@@ -208,9 +211,11 @@ def main():
         info = {}
         try: info = json.load(open(os.path.join(stage, "ready.json")))
         except (OSError, ValueError): pass
+        minfo = machine.ensure(a.instance, force=a.prepare)        # the machine snapshot, shared by every build
+        bid = "%s-%s" % (bid, minfo["id"])
         if a.prepare or info.get("build") != bid:
             log("%s: preparing (build %s)" % (a.instance, a.label))
-            info = prepare.prepare(a.instance, a.label, fx)
+            info = prepare.prepare(a.instance, a.label, fx, minfo)
             info["build"] = bid
             json.dump(info, open(os.path.join(stage, "ready.json"), "w"))
         res = [run_one(a.instance, a.label, s, info, fx) for s in todo]

@@ -35,8 +35,12 @@ from `<drive>/VST2 Plugins`, sets the machine up accordingly, and the few checks
   instance is never written, and the guest's network is restricted to one address, the fixture server.
 * `emu.py` is the machine: boot, ssh, the QEMU monitor (snapshots, power cut), the screen and touches over VNC, OCR of the screen,
   the Manager's web API from inside the guest, and `Fixture`, the catalog and zips the guest downloads from.
-* `prepare.py` takes a booted instance to "MPC running, the Manager on a track, its screen open" and snapshots it. That is done once
-  per instance and build (three to four minutes); every scenario then resumes the snapshot in about three seconds.
+* `machine.py` boots an instance and sets it up as the model has it (the internal drive, on MPC OS 3.10.1+ the Enhancements
+  switches), with no Manager, and snapshots that as "machine" in `state/<instance>/machine/`. Done once per instance, and again only
+  when the firmware, QEngine, QEMU, `machine.py` or the shim change (`machine.py --id`); CI keeps it as a prebuilt image.
+  `run.sh -i INSTANCE --machine` makes just that.
+* `prepare.py` starts from a copy of the machine snapshot, installs the build's Manager, opens it on a track and snapshots that as
+  "ready". That is done once per instance and build (three to five minutes); every scenario then resumes it in about three seconds.
 * `scenarios.py` holds the scenarios; `run.py` runs them and writes the results.
 
 A scenario queues changes with a tap or through the Manager's web API (the same code path as the phone page), runs APPLY, and then
