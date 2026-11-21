@@ -94,11 +94,14 @@ What the instance needed (all in the harness, nothing in QEngine):
 
 Bugs found on the Sample (not fixed here):
 
-* **The published RACK addin 1.0.0 zip does not install on a Sample.** Its bundled `addin-lib.sh` predates the Sample: it picks
-  `acvs` as MPC's service, writes `/run/systemd/system/acvs.service.d/90-mpc-addins.conf` and stops with "Unit acvs.service not
-  found" (exit 5); MPC never preloads it. And its `install.sh` copies `sample-rack-apply` as 644, so RACK's APPLY would fail
-  (systemd-run: 203/EXEC). mpc-vst-plugins' current addin installer has both right (ac50; executable by content); the harness packages
-  the published 1.0.0 binaries with it, and then the install, the preload and the apply work. The fix is a re-release of the addin.
+* **The published RACK addin 1.0.0 zip's bundled installer does not install on a Sample.** The problem is the installer in the zip,
+  not RACK: the zip was built against an mpc-vst-plugins from before e78fe440. Its `addin-lib.sh` picks `acvs` as MPC's service,
+  writes `/run/systemd/system/acvs.service.d/90-mpc-addins.conf` and stops with "Failed to restart acvs.service: Unit acvs.service
+  not found." (exit 5); MPC never preloads it. And its `install.sh` copies `sample-rack-apply` as 644, so RACK's APPLY fails
+  ("Permission denied" from a shell, 203/EXEC from systemd-run). RACK itself works on a real Sample when installed with the current
+  installer (ac50; executable by content), and so does it here: by default the harness packages the 1.0.0 binaries with it. The
+  fix is the 1.0.1 zip, built with the current installer: `RACK_REPACK=0 RACK_ZIP=<the 1.0.1 zip> build.sh` serves it as it is,
+  and its own `install.sh -y` installs, preloads and applies (the four sample scenarios pass).
 * **`install.sh` and `uninstall.sh` without `-t`.** Neither looks at the card. `install.sh` stops with "cannot create /sdcard/Synths"
   (nothing changed). `uninstall.sh` reports success, removes the settings entry (matched by uid) and leaves the plugin's folder on
   the card, unlisted. `mpc-store.sh` has the same `/sdcard/Synths` default (not run here).
