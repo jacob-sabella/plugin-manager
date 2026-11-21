@@ -3187,7 +3187,7 @@ static void do_launch(mgr_t *m) {
     say(m, OK, "Restarting MPC\xe2\x80\xa6 it will be back in a few seconds");
     logf_("launching apply.sh");
 #if defined(__arm__) || defined(__aarch64__)
-    if (launch_detached(m, WORK "/apply.sh")) say(m, ERR, "MPC could not be restarted. Nothing was changed.");
+    if (launch_detached(m, WORK "/apply.sh")) { logf_("launching apply.sh failed"); say(m, ERR, "MPC could not be restarted. Nothing was changed."); }
 #else
     (void)launch_detached;
     say(m, OK, "Dry run: apply.sh written");   /* host tests: never touch the build machine */
@@ -3589,6 +3589,16 @@ static void post(mgr_t *m, int job) {   /* called with mu held */
     pthread_cond_signal(&m->cv);
 }
 
+/* The restart prompt's GO. post() drops a job while the worker is busy; with ready cleared first the press was lost without a word and
+ * the apply never ran. It stays ready, so the next press goes through. 1 when the launch was posted. Called with mu held. */
+static int post_launch(mgr_t *m) {
+    if (m->busy || m->job) { logf_("apply: GO while the worker is busy (busy=%d job=%d), still ready", m->busy, m->job); return 0; }
+    m->ready = 0;
+    post(m, J_LAUNCH);
+    logf_("apply: GO accepted");
+    return 1;
+}
+
 static void requeue(mgr_t *m, pkg_t *p, int q) {   /* any change to the queue drops a prepared or failed APPLY */
     p->queued = q;
     m->ready = m->failed = 0;
@@ -3698,7 +3708,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         else if (v >= 0.5 && !strcmp(key, "confirm_go")) {
             m->confirm = 0;
             if (m->dev->nusable > 1) target_save(m);   /* remember the place the user confirmed */
-            if (m->ready && !busy) { m->ready = 0; post(m, J_LAUNCH); }
+            if (m->ready && !busy && !post_launch(m)) say_locked(m, WARN, "Still busy: press APPLY again.");
         }
     } else if (v >= 0.5 && !strcmp(key, "search_btn")) {   /* the header's search button or search chip: type */
         m->kb = 1;
