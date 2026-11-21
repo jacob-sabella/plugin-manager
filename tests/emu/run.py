@@ -24,6 +24,7 @@ class T:
         self.gen = 2 if self.arch == "aarch64" else 1
         self.settings = prepare.SETTINGS
         self.problems = []
+        self.findings = []          # what the device does that a user should know of, recorded as found and not failed
         self.nshot = 0
 
     # -- checks: a failed one is recorded and the scenario goes on, so one run shows everything that is wrong ------------------------
@@ -31,6 +32,9 @@ class T:
         if not ok:
             self.problems.append(what); log("    FAIL: " + what)
         return bool(ok)
+
+    def finding(self, what):
+        self.findings.append(what); log("    finding: " + what)
 
     def eq(self, got, want, what):
         return self.check(got == want, "%s: got %r, want %r" % (what, got, want))
@@ -161,6 +165,7 @@ class T:
 
 
 SCENARIOS = []
+SAMPLE_SCENARIOS = []          # the MPC Sample's (sample_scenarios.py): it has no plugin browser, so none of the Manager's apply
 
 
 def scenario(f):
@@ -168,15 +173,20 @@ def scenario(f):
     return f
 
 
-def run_one(instance, label, sc, info, fx):
+def sample_scenario(f):
+    SAMPLE_SCENARIOS.append(f)
+    return f
+
+
+def run_one(instance, label, sc, info, fx, snapshot="ready", tclass=T, logs=(PM + "/device.txt", PM + "/manager.log", PM + "/apply.log", PM + "/result")):
     out = os.path.join(HERE, "results", instance, label, sc.__name__)
     shutil.rmtree(out, ignore_errors=True); os.makedirs(out)
     vm = emu.VM(instance, label)
     t0 = time.time(); t = None
     try:
         fx.catalog()
-        vm.start("ready")
-        t = T(vm, fx, info, out)
+        vm.start(snapshot)
+        t = tclass(vm, fx, info, out)
         sc(t)
         problems = t.problems
     except Fail as e:
@@ -186,15 +196,19 @@ def run_one(instance, label, sc, info, fx):
     try:
         if vm.proc and vm.proc.poll() is None:
             vm.shot(os.path.join(out, "99-end.png"))
-            for n in ("device.txt", "manager.log", "apply.log", "result"):
-                txt = vm.read("%s/%s" % (PM, n))
-                if txt: open(os.path.join(out, "end-" + n), "w").write(txt)
+            for path in logs:
+                txt = vm.read(path)
+                if txt: open(os.path.join(out, "end-" + os.path.basename(path)), "w").write(txt)
     except Exception:
         pass
     vm.stop()
     secs = int(time.time() - t0)
-    log("%s %-28s %s (%ds)%s" % (instance, sc.__name__, "ok" if not problems else "FAILED", secs, "".join("\n      - " + p for p in problems)))
-    return {"scenario": sc.__name__, "ok": not problems, "seconds": secs, "problems": problems, "doc": (sc.__doc__ or "").strip().split("\n")[0]}
+    findings = t.findings if t else []
+    log("%s %-28s %s (%ds)%s%s" % (instance, sc.__name__, "ok" if not problems else "FAILED", secs, "".join("\n      - " + p for p in problems),
+                                  "".join("\n      * " + f for f in findings)))
+    r = {"scenario": sc.__name__, "ok": not problems, "seconds": secs, "problems": problems, "doc": (sc.__doc__ or "").strip().split("\n")[0]}
+    if findings: r["findings"] = findings
+    return r
 
 
 def build_id(label):
@@ -215,9 +229,12 @@ def main():
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--machine", action="store_true", help="make the machine snapshot (no Manager) if it is not current, and stop")
     a = ap.parse_args()
-    import run, scenarios   # noqa: scenarios registers itself with the module named run, which is not this one when run as a script
-    SCENARIOS[:] = run.SCENARIOS
+    import run, scenarios, sample, sample_scenarios   # noqa: they register with the module named run, which is not this one when run as a script
+    kind = "sample" if sample.is_sample(a.instance) else "manager"
+    SCENARIOS[:] = run.SAMPLE_SCENARIOS if kind == "sample" else run.SCENARIOS
     todo = [s for s in SCENARIOS if not a.k or any(k in s.__name__ for k in a.k)]
+    other = [s.__name__ for s in (run.SCENARIOS if kind == "sample" else run.SAMPLE_SCENARIOS) if a.k and any(k in s.__name__ for k in a.k)]
+    if other: log("%s: not run here (%s): %s" % (a.instance, "MPC Sample, no plugin browser" if kind == "sample" else "the MPC Sample's", " ".join(other)))
     if a.list:
         for s in todo: print("%-28s %s" % (s.__name__, (s.__doc__ or "").strip().split("\n")[0]))
         return 0
@@ -234,12 +251,19 @@ def main():
         except (OSError, ValueError): pass
         minfo = machine.ensure(a.instance, force=a.prepare)        # the machine snapshot, shared by every build
         bid = "%s-%s" % (bid, minfo["id"])
-        if a.prepare or info.get("build") != bid:
+        if kind == "sample":                # no Manager: the scenarios resume a copy of the machine snapshot
+            if a.prepare or info.get("build") != bid:
+                info = sample.prepare(a.instance, a.label, minfo); info["build"] = bid
+                json.dump(info, open(os.path.join(stage, "ready.json"), "w"))
+        elif a.prepare or info.get("build") != bid:
             log("%s: preparing (build %s)" % (a.instance, a.label))
             info = prepare.prepare(a.instance, a.label, fx, minfo)
             info["build"] = bid
             json.dump(info, open(os.path.join(stage, "ready.json"), "w"))
-        res = [run_one(a.instance, a.label, s, info, fx) for s in todo]
+        if kind == "sample":
+            res = [run_one(a.instance, a.label, s, info, fx, "machine", sample_scenarios.ST, sample_scenarios.LOGS) for s in todo]
+        else:
+            res = [run_one(a.instance, a.label, s, info, fx) for s in todo]
         outd = os.path.join(HERE, "results", a.instance, a.label)
         os.makedirs(outd, exist_ok=True)
         prev = {}

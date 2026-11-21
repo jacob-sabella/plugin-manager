@@ -65,6 +65,11 @@ environment, and what the screen shows.
 | `catalog_retry` | the catalog cannot be fetched at first; the Manager tries again on its own |
 | `vst2_plugin_json` | the MPC OS 3.10.1 install path: `VST2 Plugins` and a correct plugin.json (on older firmware the switch is written into MPC.settings) |
 
+The MPC Sample (`mpc-sample-130`, AC50, built with `--product-code AC50 --firmware $FIRMWARE_DIR/MPC_SAMPLE_1.3.0_UPDATE.exe`) has no plugin
+browser, so it runs its own scenarios instead (`sample_scenarios.py`, machine in `sample.py`): `sample_install`, `sample_plugin_loads`,
+`sample_reboot` and `sample_uninstall`, with the install scripts, the RACK addin's apply helper and the card's exec bind mount. See
+FINDINGS.md. A scenario can record a finding (what the device does that a user should know of) without failing.
+
 The internal drive is a disk the harness adds to the VM (`shim/qemu-system-aarch64`). Attached drives are loop images mounted under `/media/<label>` in the guest, with the mount options a device was seen to use. The power cut
 is QEMU's `quit` after a guest `sync`: what was written is on the disk, nothing after it is.
 

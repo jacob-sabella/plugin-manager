@@ -123,7 +123,8 @@ def machine_id(instance):
     h = hashlib.sha256()
     for part in (sha, code, ref, qemu):
         h.update(part.encode() + b"\0")
-    for f in ("machine.py", "shim/qemu-system-aarch64"):
+    import sample
+    for f in ("machine.py", "shim/qemu-system-aarch64") + (("sample.py",) if sample.is_sample_code(code) else ()):
         h.update(open(os.path.join(HERE, f), "rb").read())
     return h.hexdigest()[:16]
 
@@ -172,6 +173,8 @@ def ensure(instance, force=False):
     info = None if force else current(instance)
     if info: return info
     log("%s: making the machine snapshot" % instance)
+    import sample
+    if sample.is_sample(instance): return sample.make(instance, machine_id(instance))   # MPC Sample: a machine of its own kind
     return make(instance)
 
 
