@@ -455,6 +455,46 @@ mv "$T/Faily dir" "$T/.pm-snap-faily"
 PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
 grep -q "^faily|fail|an earlier update was cut off and left an incomplete safety copy" /tmp/openmpc-pm/result && [ -f "$T/.pm-snap-faily/old" ] || { echo "FAIL: incomplete safety copy"; exit 1; }
 rm -rf "$T/.pm-snap-faily" "$T/Faily dir"
+# a finished apply leaves no journal
+JR="$(find /media /data -name MPC.settings 2>/dev/null | head -n 1 | sed "s:/Settings/.*::")/.openmpcpm-journal" || true
+[ ! -e "$JR" ] || { cat "$JR"; ls -la "$(dirname "$JR")"; echo "FAIL: a finished apply left its journal"; exit 1; }
+# roadmap item 1: an apply cut off while the installer works (a power cut). The journal stays; the next start removes the installer'"'"'s
+# half-made folder, keeps the old one, and says the update did not finish
+rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Slowy > /dev/null
+mkdir -p "$T/Slowy dir"; echo old > "$T/Slowy dir/old"
+PM_SNAP_KB=0 setsid sh /tmp/openmpc-pm/apply.sh & AP=$!
+for i in $(seq 100); do [ -f "$T/.Slowy dir.new/new" ] && break; sleep 0.1; done
+[ -f "$T/.Slowy dir.new/new" ] || { cat /tmp/openmpc-pm/apply.log; echo "FAIL: the slow installer never started"; exit 1; }
+kill -9 -- -$AP; wait $AP 2>/dev/null || true
+grep -q "^begin$(printf '"'"'\t'"'"')slowy" "$JR" && [ -f "$T/Slowy dir/old" ] || { cat "$JR"; echo "FAIL: no journal of the cut-off step"; exit 1; }
+! grep -q "safety copy" /tmp/openmpc-pm/apply.log || { echo "FAIL: a big folder with a staging installer was copied"; exit 1; }   # item 2
+tr '"'"'\t'"'"' '"'"' '"'"' < /tmp/openmpc-pm/progress | grep -qx "1 .* install slowy 1.0.0" || { cat /tmp/openmpc-pm/progress; echo "FAIL: progress"; exit 1; }    # item 3
+rm -f /tmp/openmpc-pm/result /tmp/openmpc-pm/result.seen
+/tmp/drive_addins status > /tmp/safe-cut.out
+grep -qF "The last update did not finish. Slowy: interrupted (was the MPC switched off?): its folder is in place" /tmp/safe-cut.out || { cat /tmp/safe-cut.out; exit 1; }
+[ ! -e "$JR" ] && [ ! -e "$T/.Slowy dir.new" ] && [ -f "$T/Slowy dir/old" ] || { echo "FAIL: the cut-off apply was not put right"; exit 1; }
+rm -rf "$T/Slowy dir"
+# recover.sh on its own, one crash state each (it is what the Manager runs at start and apply.sh runs first)
+R=/tmp/rec; rm -rf $R; mkdir -p "$R/V"; RS=/p/src/recover.sh; TB=$(printf '"'"'\t'"'"')
+rec() { : > $R/res; printf '"'"'pid\t999999\n'"'"' > $R/j; for l in "$@"; do printf '"'"'%s\n'"'"' "$l" >> $R/j; done; sh $RS $R/j $R/res > $R/out; }
+mkdir -p "$R/V/.A.old"; echo '"'"'{"version": "1.0"}'"'"' > "$R/V/.A.old/mpc-plugin.json"   # cut between the installer'"'"'s two renames
+rec "begin${TB}a${TB}$R/V/A${TB}install"
+[ -f "$R/V/A/mpc-plugin.json" ] && grep -qF "a|fail|interrupted (was the MPC switched off?): put back as it was, now 1.0" $R/res && [ ! -e $R/j ] || { cat $R/res; echo "FAIL: recover mid-swap"; exit 1; }
+rm -rf "$R/V/A"; mkdir -p "$R/V/.pm-snap-b" "$R/V/.pm-failed-b"; : > "$R/V/.pm-snap-b.done"; echo s > "$R/V/.pm-snap-b/s"   # cut during a rollback
+rec "begin${TB}b${TB}$R/V/B${TB}install"
+[ -f "$R/V/B/s" ] && [ ! -e "$R/V/.pm-failed-b" ] && [ ! -e "$R/V/.pm-snap-b.done" ] || { echo "FAIL: recover from the safety copy"; exit 1; }
+mkdir -p "$R/V/.pm-snap-c"   # an incomplete copy and no folder: kept, said
+rec "begin${TB}c${TB}$R/V/C${TB}install"
+[ -d "$R/V/.pm-snap-c" ] && grep -qF "c|fail|interrupted: its folder is missing; an incomplete copy is at $R/V/.pm-snap-c" $R/res || { cat $R/res; echo "FAIL: incomplete copy"; exit 1; }
+mkdir -p "$R/M/.skin.old"   # cut during the theme swap: the skin goes back
+rec "begin${TB}theme${TB}$R/M${TB}theme"
+[ -d "$R/M/Plugin Skins" ] && [ ! -e "$R/M/.skin.old" ] || { echo "FAIL: recover the skin"; exit 1; }
+mkdir -p "$R/V/.D.old"; rec "begin${TB}d${TB}$R/V/D${TB}install" "end${TB}d"   # a step that ended is left alone
+[ -d "$R/V/.D.old" ] && [ ! -s $R/res ] || { echo "FAIL: an ended step was touched"; exit 1; }
+printf '"'"'#!/bin/sh\nsleep 30\n'"'"' > $R/apply.sh; sh $R/apply.sh & LP=$!   # the apply.sh that wrote the journal still runs: nothing done
+printf '"'"'pid\t%s\nbegin\te\t%s\tinstall\n'"'"' $LP "$R/V/E" > $R/j; mkdir -p "$R/V/.E.old"; sh $RS $R/j $R/res | grep -q "still running"
+kill $LP; [ -f $R/j ] && [ -d "$R/V/.E.old" ] || { echo "FAIL: recovered under a running apply"; exit 1; }
+rm -rf $R
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
 mkdir -p "$T/Faily dir"; echo old > "$T/Faily dir/old"; cp "$T/Faily dir/old" /tmp/old.keep
 sh /tmp/openmpc-pm/apply.sh
@@ -557,6 +597,17 @@ rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir 
 sh tests/devices/mpc-one.sh && sh tests/addins.sh && /tmp/drive_addins web > /tmp/web.out
 grep -q "Content-Type: application/json" /tmp/web.out
 grep -q "\"plugins\":\[{\"id\":" /tmp/web.out
+grep -qF "\"apply\":\"\"" /tmp/web.out   # no apply under way
+# roadmap item 3: while apply.sh runs (MPC stopped, its screen dark), the page says which step it is on, from apply.sh'"'"'s progress file
+printf '"'"'#!/bin/sh\nsleep 30\n'"'"' > /tmp/apply.sh; sh /tmp/apply.sh & AP=$!
+mkdir -p /tmp/openmpc-pm; printf '"'"'pid\t%s\n'"'"' $AP > /media/az01-internal/.openmpcpm-journal
+printf '"'"'2\t5\tinstall\talpha-addin\t0.1.0\n'"'"' > /tmp/openmpc-pm/progress
+/tmp/drive_addins web > /tmp/web-apply.out 2>&1 || true
+kill $AP
+grep -qF "\"apply\":\"2\\u00095\\u0009install\\u0009alpha-addin\\u00090.1.0\"" /tmp/web-apply.out || { grep -o "\"apply\":\"[^\"]*\"" /tmp/web-apply.out; echo "FAIL: apply progress"; exit 1; }
+[ -f /media/az01-internal/.openmpcpm-journal ] || { echo "FAIL: the journal of a running apply was recovered"; exit 1; }
+rm -f /media/az01-internal/.openmpcpm-journal /tmp/openmpc-pm/progress
+grep -qF "if (S.apply)" /p/src/web_page.h
 PM_MODEL="Akai Professional MPC Live III" /tmp/drive_addins web > /tmp/web-live3.out 2>&1 || true
 grep -q "\"id\":\"alpha-addin\"" /tmp/web-live3.out && ! grep -q "\"id\":\"sample-only\"" /tmp/web-live3.out || { echo "the web page must hide an entry made for another MPC"; exit 1; }
 grep -q "\"id\":\"sample-only\"" /tmp/web.out   # an unknown model hides nothing

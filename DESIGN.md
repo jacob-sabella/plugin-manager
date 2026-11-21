@@ -215,6 +215,12 @@ folders; (4) size: each skin is 7.8 MB, so the package grows by about 16 MB.
 3. Runs each package's `install.sh -y -n -t <target>` or `uninstall.sh`, checks the exit status and that the plugin-list entry exists (`file=` and `uid`).
 4. On any failure: restore the settings and the folders, mark the item failed with the log tail on screen, start MPC.
 5. On success: refresh the manifest and history, start MPC.
+
+Since 1.4.0 (roadmap items 1 to 3, offline only so far):
+- **Snapshots.** A folder of 48 MB or less (`PM_SNAP_KB`) is copied to RAM as before. A bigger one is not copied when its installer stages the new folder beside the old one and swaps it in at the end (every `install.sh` since 2026-09-29, told by `STAGE=` in it), or when it is a removal. The old folder stays in place until that swap. If such an install fails after the swap, the files in place are kept and `MPC.settings` is put back. Only an older installer still gets the copy beside the folder.
+- **Journal.** `apply.sh` writes `<base>/.openmpcpm-journal` on the settings drive (not `/tmp`, which a reboot empties): its own pid, then `begin`/`end` per step (tab-separated). It is deleted before MPC starts. `src/recover.sh` (embedded as `src/recover_sh.h`, `vst/gen_recover.py`) finishes or undoes a step that began and never ended. A folder in place is kept as it is; a missing one is put back from the safety copy, the installer's `.<folder>.old` or the failed folder; leftovers are removed; a cut-off skin swap is put back. It only renames and deletes, so it is safe with MPC running. The Manager runs it at start, and `apply.sh` runs it first. It does nothing while the `apply.sh` that wrote the journal still runs (the background server refreshes during an apply). What it did shows once: `The last update did not finish. <name>: interrupted ...`.
+- **Progress.** `apply.sh` writes `/tmp/openmpc-pm/progress` (step, of, act, id, version) before each step. While a journal exists, `/api/state` carries it as `apply` and the web page shows the step, since MPC's own screen is dark. Drawing it on the MPC's screen is still to do: it needs a device, because a display grab still held when MPC starts crash-loops it (Force, DrmVnc).
+
 The restart path must not be compiled out on aarch64 (poloq's `#ifdef __arm__` turned the apply into a dry run: PR #12 fixes it; keep a test that fails if the aarch64 build takes the dry-run branch).
 
 ## 8. Testing
