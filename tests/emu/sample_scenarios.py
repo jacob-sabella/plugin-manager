@@ -59,7 +59,7 @@ def installed_fx(t):
 
 
 def rack_name(t):
-    """The RACK release the fixture serves (one), e.g. MPC-Sample-rack-addin-1.0.0: build.sh's default, or RACK_REPACK=0's zip."""
+    """The RACK release the fixture serves (one), e.g. MPC-Sample-rack-addin-1.0.1: build.sh's default, or RACK_ZIP's."""
     n = sorted(f[:-len("-mpc-aarch64.zip")] for f in os.listdir(t.fx.src) if f.startswith(RACK) and f.endswith("-mpc-aarch64.zip"))
     if len(n) != 1: raise Fail("the fixture has %d RACK zips: run tests/emu/build.sh" % len(n))
     return n[0]
