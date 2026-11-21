@@ -4,13 +4,16 @@ its pressed copy, and the detail view's baked pictures). Their built PNGs are re
 came out identical (the same thumbnail on each card row: the builder names them after the row's parameter) are kept
 once, TUI.json pointing at that copy. Small images (the artwork, text) are left as built.
 Readouts (live text) ignore touches: they sit over the cards and the detail view's tag buttons, whose taps must reach
-the card or button under them."""
+the card or button under them. Trigger buttons answer a touch once (skin_taps.py)."""
 import hashlib
 import json
 import os
 import sys
 
 from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import skin_taps  # noqa: E402
 
 MIN = 16000   # bytes: below this a PNG is artwork, not a screenshot
 
@@ -43,6 +46,7 @@ for root, _, files in os.walk(sys.argv[1]):
         if d["key"].startswith("shReadout_"):
             d["value"]["ignoreMousePresses"] = True
             quiet += 1
+    taps = skin_taps.once(t)   # a trigger answers a touch once, not once for the finger landing and once for it lifting
     open(tui, "w", encoding="utf-8").write(json.dumps(t, indent=4))
-    print("skin_post: readouts ignore touches (%d)" % quiet)
+    print("skin_post: readouts ignore touches (%d), triggers answer a touch once (%d)" % (quiet, taps))
     print("skin_post: %d duplicate images merged" % len(same))

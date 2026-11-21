@@ -129,4 +129,19 @@ json.dump({"schema": 1, "patches": [
          also_installs={"x86_64": ["fx-comp"], "aarch64": ["fx-comp"], "armv7l": ["fx-comp"]}),
     pat("fx-comp", "Fixture companion: keeps it", "patch-comp.sh", hashlib.sha256(comp.encode()).hexdigest(), "armv7l,aarch64,x86_64")]},
     open(os.path.join(out, "patches.json"), "w"), indent=1)
-print("fixture: %d packages in %s" % (len(plugins), out))
+# the catalog the device runs browse: tests/catalog-snapshot.json (a frozen extract of the live one, tests/snapshot_catalog.py) with every
+# download pointed at one stand-in package, so no test reads the network
+sz = os.path.join(out, "Standin-1.0.0.zip")
+with zipfile.ZipFile(sz, "w") as z:
+    for name, body in (("install.sh", "#!/bin/sh\nexit 0\n"), ("uninstall.sh", "#!/bin/sh\nexit 0\n"), ("mpc-plugin.json", "{}\n")):
+        z.writestr(zipfile.ZipInfo("Standin-1.0.0/" + name, (2026, 1, 1, 0, 0, 0)), body)
+sd = open(sz, "rb").read()
+stand = {"url": base + "Standin-1.0.0.zip", "sha256": hashlib.sha256(sd).hexdigest(), "size": len(sd)}
+snap = json.load(open(os.path.join(here, "catalog-snapshot.json")))
+for p in snap["plugins"]:
+    for v in p["versions"]:
+        v.update(stand)
+        for a in (v.get("assets") or {}).values(): a.update(stand)
+json.dump(snap, open(os.path.join(out, "catalog-live.json"), "w"), indent=1)
+json.dump({"schema": 1, "patches": []}, open(os.path.join(out, "patches-live.json"), "w"))
+print("fixture: %d packages and a %d-entry catalog snapshot in %s" % (len(plugins), len(snap["plugins"]), out))
