@@ -169,7 +169,14 @@ class VM:
             return
         s.settimeout(1)
         pub = open(self.key + ".pub").read().strip()
-        setup = ("mkdir -p /run/sshd /run/pm; echo '%s' > /run/pm/authorized_keys; chmod 600 /run/pm/authorized_keys; "
+        # No default route: the firmware's connman left the emulator's NIC down (the MPC Sample tells connman to switch wired
+        # networking off when it starts; its SSH runs over the USB gadget link, which QEMU has not got). connman is told to leave the
+        # NIC alone (a copy of its main.conf in /run, bound over it) and the NIC gets QEMU's usual address. Other firmware has a route.
+        net = ("if ! awk '$2 == \"00000000\" { f = 1 } END { exit !f }' /proc/net/route; then i=$(ls /sys/class/net | grep -v '^lo$' | head -n 1); c=/etc/connman/main.conf; "
+               "if [ -f $c ] && ! grep -q NetworkInterfaceBlacklist $c; then { cat $c; echo \"NetworkInterfaceBlacklist = $i\"; } > /run/pm/connman.conf; "
+               "mount --bind /run/pm/connman.conf $c; systemctl restart connman; fi; "
+               "ifconfig $i 10.0.2.15 netmask 255.255.255.0 up; route add default gw 10.0.2.2; fi; ")
+        setup = ("mkdir -p /run/sshd /run/pm; " + net + "echo '%s' > /run/pm/authorized_keys; chmod 600 /run/pm/authorized_keys; "
                  "k=$(ls /etc/ssh/ssh_host_*_key 2>/dev/null | head -n 1); [ -n \"$k\" ] || { k=/run/pm/hostkey; [ -f $k ] || ssh-keygen -q -t ed25519 -N '' -f $k; }; "
                  "/usr/sbin/sshd -h $k -o AuthorizedKeysFile=/run/pm/authorized_keys -o PermitRootLogin=yes -o StrictModes=no; echo PM''SSHD $?\n" % pub)
         buf, state = b"", "boot" if login else "done"
