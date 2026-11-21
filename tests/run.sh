@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Offline tests in the gcc:12 Docker image (needs network: they read the live catalog and download one zip).
-#   ONLY=<section> tests/run.sh   one section (ONLY=devices:2/4: a quarter of the fake devices, as CI runs them) (devices addins links regress vst2 pick theme safety arch web) in a minute or two; no ONLY: everything (about 9 minutes)
+#   ONLY=<section> tests/run.sh   one section (ONLY=devices:2/4: a quarter of the fake devices, as CI runs them) (devices addins links regress vst2 pick theme safety arch web splash) in a minute or two; no ONLY: everything (about 9 minutes)
 #   tests/run.sh            the wrapper host test, each fake device in tests/devices/, then the addin flow against
 #                           an offline fixture (tests/fixture.py: three addin packages and a file:// catalog)
 # A fake device is a shell script that builds the device's files inside the container: MPC.settings (the real format,
@@ -14,7 +14,7 @@ MPC_VST="$MV" python3 "$here/tests/fixture.py"
 docker run --rm -e ONLY -e TRACE -e DEV -v "$here":/p -v "$MV":/mv:ro -w /p gcc:12 bash -c '
 set -eo pipefail; [ -z "$TRACE" ] || set -x
 SAN="-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1"
-want() { [ -z "$ONLY" ] || [ "${ONLY%%:*}" = "$1" ]; }   # ONLY=devices:2/4 runs every 4th fake device from the 2nd (CI shards)   # ONLY=safety: just that section (devices, addins, links, pick, theme, safety, arch, web)
+want() { [ -z "$ONLY" ] || [ "${ONLY%%:*}" = "$1" ]; }   # ONLY=devices:2/4 runs every 4th fake device from the 2nd (CI shards)   # ONLY=safety: just that section (devices, addins, links, pick, theme, safety, arch, web, splash)
 export PM_TAPMS=40   # the double-tap window, short (FS_ANY builds only)
 export PM_GLIBC=2.39   # a Gen2 / MPC OS 3.x glibc: the container has 2.36, which reads as OS 2.x and refused the live catalog packages (a 120 s wait per device)
 gcc $SAN -std=gnu11 -w -Ivst/build src/manager.c /mv/tools/host_test.c /mv/wrapper/vst2_wrap.c -lpthread -ldl -lm -o /tmp/host_test
@@ -642,4 +642,35 @@ grep -q "^bad folder" /tmp/webfiles.out && grep -q "^that file name cannot be us
 [ ! -e "$P/x.bin" ] && [ ! -e "$P/evil.bin" ] && [ -z "$(ls -A "$P/roms")" ]   # nothing escaped, the delete removed the file
 echo "web OK"
 fi # web
+if want splash; then
+echo "-- update screen (src/splash.c): frames, rotation, no display"
+gcc $SAN -std=gnu11 -Wall -Werror -Isrc src/splash.c -o /tmp/splash
+cc -std=gnu11 -include src/splash_drm.h -x c - -o /tmp/drmchk <<EOC   # our struct layouts and ioctl numbers == the kernel headers
+#include <stdio.h>
+#define P(n) printf("%lx\\n", (unsigned long)n);
+int main(void) { P(DRM_IOCTL_MODE_GETRESOURCES) P(DRM_IOCTL_MODE_SETCRTC) P(DRM_IOCTL_MODE_GETENCODER) P(DRM_IOCTL_MODE_GETCONNECTOR) P(DRM_IOCTL_MODE_ADDFB) P(DRM_IOCTL_MODE_RMFB) P(DRM_IOCTL_MODE_CREATE_DUMB) P(DRM_IOCTL_MODE_MAP_DUMB) P(DRM_IOCTL_MODE_DESTROY_DUMB) P(DRM_IOCTL_SET_MASTER) P(DRM_IOCTL_DROP_MASTER) return 0; }
+EOC
+/tmp/drmchk > /tmp/drm.ours
+printf "c04064a0\nc06864a2\nc01464a6\nc05064a7\nc01c64ae\nc00464af\nc02064b2\nc01064b3\nc00464b4\n641e\n641f\n" | cmp - /tmp/drm.ours
+TB=$(printf "\t"); printf "model-72${TB}Model-72\n" > /tmp/names
+/tmp/splash --ppm /tmp/l.ppm --size 1280x800 --names /tmp/names --state "2${TB}5${TB}install${TB}model-72${TB}1.0.0"
+/tmp/splash --ppm /tmp/p.ppm --names /tmp/names --state "2${TB}5${TB}install${TB}model-72${TB}1.0.0"
+python3 - <<EOP   # the portrait buffer, turned the way the panel shows it, is the landscape frame; the 90 degree rule as in force-shadow
+def ppm(f):
+    d = open(f, "rb").read(); h = d.split(b"\n", 3); w, ht = map(int, h[1].split()); return w, ht, h[3]
+lw, lh, l = ppm("/tmp/l.ppm"); pw, ph, p = ppm("/tmp/p.ppm")
+assert (lw, lh, pw, ph) == (1280, 800, 800, 1280)
+for x, y in [(0, 0), (640, 400), (100, 700), (1279, 799), (300, 90)]:
+    bx, by = y, ph - 1 - x
+    assert l[(y * lw + x) * 3:(y * lw + x) * 3 + 3] == p[(by * pw + bx) * 3:(by * pw + bx) * 3 + 3], (x, y)
+assert len(set(l[i:i + 3] for i in range(0, len(l), 3 * 97))) > 8   # text and the bar were drawn, not just a fill
+EOP
+for st in "1${TB}1${TB}remove${TB}x${TB}" "3${TB}3${TB}start${TB}${TB}" "1${TB}2${TB}register${TB}loc-0${TB}" "9${TB}2${TB}theme${TB}${TB}" "x" "0" "1${TB}0${TB}move${TB}${TB}" "1${TB}1${TB}install${TB}$(head -c 300 /dev/zero | tr "\0" W)${TB}1"; do
+  /tmp/splash --ppm /tmp/x.ppm --state "$st"
+done
+! /tmp/splash --ppm /tmp/x.ppm --size 10x10 2>/dev/null
+r=0; /tmp/splash /tmp/no-such-progress 2>/tmp/splash.err || r=$?
+[ "$r" = 3 ] && grep -q "card0" /tmp/splash.err   # no display (or one in use): gives up at once, apply.sh carries on
+echo "splash OK"
+fi # splash
 '
