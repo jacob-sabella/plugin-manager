@@ -2644,6 +2644,8 @@ static int prune_backups(const device_t *d) {
     return gone;
 }
 
+#define NO_SAFE_COPY "no safe copy could be kept"   /* in a result line: this item was not put back as it was */
+
 /* The result of the last apply (apply.sh's per-item lines "id|ok|" or "id|fail|reason"), shown once after MPC is back. */
 static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
     /* MPC creates the plugin more than once (it opens it twice), and each instance refreshes: claim the file by renaming it, so exactly
@@ -2653,7 +2655,7 @@ static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
     if (rename(WORK "/result", mine)) return;
     char *s = slurp(mine, 8192);
     if (!s) { unlink(mine); return; }
-    int ok = 0, bad = 0;
+    int ok = 0, bad = 0, lost = 0;
     char first[300] = "";
     char *sv = NULL;
     for (char *l = strtok_r(s, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) {
@@ -2666,6 +2668,7 @@ static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
             if (sscanf(b + 1, "%11s %23s", act, ver) >= 1 && strncmp(l, "loc-", 4)) hist_record(m->dev, l, act, ver);
         }
         else {
+            if (strstr(b + 1, NO_SAFE_COPY)) lost = 1;
             if (!bad++) {
                 const char *name = l;
                 for (int i = 0; i < n; i++) if (!strcmp(pkg[i].id, l)) name = pkg[i].name;
@@ -2677,7 +2680,7 @@ static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
     rename(mine, WORK "/result.seen");
     if (!ok && !bad) return;
     if (ok) prune_backups(m->dev);
-    if (bad) say_locked(m, ERR, "Last apply: %d done, %d failed and put back as they were. %s", ok, bad, first);
+    if (bad) say_locked(m, ERR, "Last apply: %d done, %d failed%s. %s", ok, bad, lost ? "" : " and put back as they were", first);
     else say_locked(m, OK, "Last apply: %d done.", ok);
 }
 
@@ -2966,7 +2969,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "    else echo \"$id|fail|could not put back the safety copy at $old\" >> \"$RES\"; return 1; fi\n"
                    "  elif [ -e \"$old\" ]; then echo \"$id|fail|an earlier update was cut off and left an incomplete safety copy at $old\" >> \"$RES\"; return 1\n"
                    "  else rm -f \"$old.done\"; fi\n}\n"
-                   "item() {\n  id=$1; dir=$2; act=$3; ver=$4; shift 4; snap=''; side=''\n"
+                   "item() {\n  id=$1; dir=$2; act=$3; ver=$4; shift 4; snap=''; side=''; nocopy=''\n"
                    "  if [ -n \"$dir\" ]; then heal \"$(dirname \"$dir\")\" \"$id\" \"$dir\" || return 1; fi\n"
                    /* A small folder is copied to RAM (WORK); a big one to a hidden sibling on its own drive, after a free-space check.
                     * "Small" is by what the files hold (ls), not by what the drive says they take (du): on an exFAT card with big clusters
@@ -2976,6 +2979,11 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "    sz=$(ls -lR \"$dir\" 2>/dev/null | awk '{ s += $5 } END { print int(s / 1024) + 1 }'); sz=${sz:-0}\n"
                    "    cap=${PM_SNAP_KB:-49152}; mem=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null)\n"
                    "    [ -z \"${PM_SNAP_KB+x}\" ] && [ \"${mem:-0}\" -ge $((sz * 2 + 131072)) ] && cap=196608   # MPC is stopped: its memory is free\n"
+                   /* A removal stages nothing, and is how a user makes room on a full drive: it is never refused for want of room for a copy */
+                   "    wfree=$(df -Pk '" WORK "' 2>/dev/null | awk 'NR==2 {print $4}')\n"
+                   "    if [ \"$act\" = remove ] && { [ \"$sz\" -gt \"$cap\" ] || [ \"${wfree:-0}\" -lt $((sz + 65536)) ]; }; then\n"
+                   "      nocopy=1; echo \"-- $id: removed without a safe copy (no room for one)\"\n"
+                   "    else\n"
                    "    if [ \"$sz\" -le \"$cap\" ]; then snap=\"$SNAP/$id.dir\"; need=$sz; echo \"-- $id: safe copy in memory ($((sz / 1024)) MB)\"\n"
                    "    else side=\"$(dirname \"$dir\")/.pm-safe-$id\"; snap=\"$side/${dir##*/}\"; copy=$(du -sk \"$dir\" 2>/dev/null | cut -f1); copy=${copy:-$sz}; need=$((2 * copy))\n"
                    "      echo \"-- $id: safe copy on the drive ($((copy / 1024)) MB), MPC starts again when the update is done\"; fi\n"
@@ -2987,6 +2995,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "      wait $cpid && sync && mv \"$side.part\" \"$side\" || { rm -rf \"$side.part\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
                    "    else cp -a \"$dir\" \"$snap\" || { rm -rf \"$snap\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
                    "    fi\n"
+                   "    fi\n"
                    "  fi\n"
                    "  cp -p \"$SETTINGS\" \"$SNAP/$id.settings\" 2>/dev/null\n"
                    "  out=$(\"$@\" 2>&1); rc=$?\n  pidof MPC >/dev/null && quiesce   # an installer without -n started MPC again: MPC starts once, at the end\n"
@@ -2995,6 +3004,9 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "    if [ -n \"$side\" ]; then mv \"$side\" \"$side.part\"; rm -rf \"$side.part\" \"$side\"; elif [ -n \"$snap\" ]; then rm -rf \"$snap\"; fi\n"
                    "    rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
                    "  echo \"$out\"\n"
+                   /* a removal with no copy: the folder stays as the uninstaller left it (never deleted here), MPC.settings goes back */
+                   "  if [ -n \"$nocopy\" ]; then [ -f \"$SNAP/$id.settings\" ] && cp -p \"$SNAP/$id.settings\" \"$SETTINGS\"\n"
+                   "    echo \"$id|fail|the removal stopped and " NO_SAFE_COPY ": $(echo \"$out\" | tail -n 1 | tr '|' ' ')\" >> \"$RES\"; echo \"-- $id failed: no safe copy to put back\"; return 1; fi\n"
                    /* roll back: the failed folder is moved aside (not deleted) until the safety copy is back in its place. The copy on the
                     * drive goes back by a rename, so a power cut here leaves a whole .pm-safe-<id> for heal */
                    "  if [ -n \"$snap\" ] && [ -d \"$snap\" ]; then\n"

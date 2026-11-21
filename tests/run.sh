@@ -535,6 +535,22 @@ grep -q "^faily|fail|not enough free space to keep a safe copy" /tmp/openmpc-pm/
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
 echo 265536 > /tmp/fakedf/free; PATH=/tmp/fakedf:$PATH PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
 grep -q "^faily|fail|disk full" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result; echo "FAIL: room for both copies was refused"; exit 1; }
+# a removal stages nothing: on a full drive, with no room in memory either, it still runs (the same item, turned into a removal)
+as_removal() { sed -i -e "s/ install .1\.0\.0. sh / remove \"\" sh /" -e "s/setstate .faily. .1\.0\.0./true/" -e "s#/install\.sh#/uninstall.sh#g" /tmp/openmpc-pm/apply.sh; }
+rm -rf /tmp/openmpc-pm "$T/.pm-safe-faily" "$T/Faily dir"; /tmp/drive_addins one Faily > /dev/null; as_removal
+mkdir -p "$T/Faily dir"; echo old > "$T/Faily dir/old"; echo 0 > /tmp/fakedf/free
+PATH=/tmp/fakedf:$PATH PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|ok|remove" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result /tmp/openmpc-pm/apply.log; echo "FAIL: a removal was refused on a full drive"; exit 1; }
+grep -qF -- "-- faily: removed without a safe copy" /tmp/openmpc-pm/apply.log && [ ! -e "$T/.pm-safe-faily" ] && [ ! -e "$T/.pm-safe-faily.part" ] || { echo "FAIL: a removal staged a copy on a full drive"; exit 1; }
+# the same removal failing: the folder is left as it is, and the message does not claim it was put back
+rm -rf /tmp/openmpc-pm "$T/Faily dir"; /tmp/drive_addins one Faily > /dev/null; as_removal
+printf "#!/bin/sh\necho stuck\nexit 4\n" > /tmp/openmpc-pm/faily/Faily-1.0.0/uninstall.sh
+mkdir -p "$T/Faily dir"; echo old > "$T/Faily dir/old"
+PATH=/tmp/fakedf:$PATH PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
+grep -q "^faily|fail|the removal stopped and no safe copy could be kept: stuck" /tmp/openmpc-pm/result || { cat /tmp/openmpc-pm/result; echo "FAIL: the failed removal without a copy"; exit 1; }
+[ "$(cat "$T/Faily dir/old")" = old ] || { echo "FAIL: a failed removal without a copy deleted the folder"; exit 1; }
+/tmp/drive_addins status > /tmp/safe-nocopy.out
+grep -qF "Last apply: 0 done, 1 failed. Faily: the removal stopped" /tmp/safe-nocopy.out || { grep -i "last apply" /tmp/safe-nocopy.out; echo "FAIL: the message for a removal that could not be put back"; exit 1; }
 rm -rf "$T/.pm-snap-faily" "$T/.pm-snap-faily.done" "$T/Faily dir"
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Faily > /dev/null
 mkdir -p "$T/Faily dir"; echo old > "$T/Faily dir/old"; cp "$T/Faily dir/old" /tmp/old.keep
