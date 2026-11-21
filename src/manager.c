@@ -2900,6 +2900,12 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "[ -f \"$J\" ] && APPLY_PID=$$ sh '" WORK "/recover.sh' \"$J\" \"$RES\"\n"
                    "printf 'pid\\t%%s\\n' $$ > \"$J\"; sync\n"
                    "jot() { printf '%%s\\n' \"$*\" >> \"$J\"; sync; }\n"
+                   /* the update screen on the MPC's own display (src/splash.c; through Akai's splash where there is one). It never holds the
+                    * display while MPC could start, exits by itself once MPC runs or this script is gone, and is stopped before MPC starts */
+                   "SPL=''\nsplash_start() { [ -x '" WORK "/splash' ] && ! pidof MPC >/dev/null || return 0; [ -n \"$SPL\" ] && kill -0 \"$SPL\" 2>/dev/null && return 0; '" WORK "/splash' \"$PROG\" '" WORK "/names' & SPL=$!; }\n"
+                   "splash_stop() { [ -n \"$SPL\" ] || return 0; kill \"$SPL\" 2>/dev/null; i=0; while kill -0 \"$SPL\" 2>/dev/null && [ $i -lt 5 ]; do sleep 1; i=$((i + 1)); done; kill -9 \"$SPL\" 2>/dev/null; wait \"$SPL\" 2>/dev/null; SPL=''; "
+                   "[ -x /usr/bin/az0x-splashctl ] && /usr/bin/az0x-splashctl drop-display >/dev/null 2>&1; return 0; }\n"
+                   "printf '0\\t%%s\\twait\\t\\t\\n' \"$NSTEP\" > \"$PROG\"; splash_start\n"
                    /* what the web page shows while MPC is stopped: step, of, act, id, version */
                    "progress() { STEP=$((STEP + 1)); printf '%%s\\t%%s\\t%%s\\t%%s\\t%%s\\n' \"$STEP\" \"$NSTEP\" \"$1\" \"$2\" \"$3\" > \"$PROG.new\" && mv \"$PROG.new\" \"$PROG\"; }\n"
                    /* item ID FOLDER ACT VER cmd...: one step, journalled */
@@ -2932,7 +2938,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "    fi\n"
                    "  fi\n"
                    "  cp -p \"$SETTINGS\" \"$SNAP/$id.settings\" 2>/dev/null\n"
-                   "  out=$(\"$@\" 2>&1); rc=$?\n  pidof MPC >/dev/null && quiesce   # an installer without -n started MPC again: MPC starts once, at the end\n"
+                   "  out=$(\"$@\" 2>&1); rc=$?\n  pidof MPC >/dev/null && { quiesce; splash_start; }   # an installer without -n started MPC again: MPC starts once, at the end\n"
                    "  if [ $rc -eq 0 ]; then echo \"$out\"; echo \"$id|ok|$act $ver\" >> \"$RES\"; [ -n \"$snap\" ] && rm -rf \"$snap\" \"$snap.done\"; rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
                    "  echo \"$out\"\n"
                    /* roll back: the failed folder is moved aside (not deleted) until the safety copy is back in its place */
@@ -2955,6 +2961,17 @@ static void prepare(mgr_t *m, pkg_t *q) {
             FILE *v = fopen(WORK "/recover.sh", "w");
             if (v) { fputs(RECOVER_SH, v); fclose(v); }
             else err = "recover.sh could not be written";
+        }
+        {   /* the update screen: the plugins' names for its titles, and its program copied out of this plugin's folder (a self-update replaces
+             * that folder while it runs). Without it (an older zip, a build without the payload) apply.sh just runs without a screen. */
+            FILE *v = fopen(WORK "/names", "w");
+            if (v) { for (int k = 0; k < m->npkg; k++) fprintf(v, "%s\t%s\n", m->pkg[k].id, m->pkg[k].name); fclose(v); }
+            char src[320], cmd[900];
+            bg_src(m, src, sizeof src);
+            unlink(WORK "/splash");
+            if (*src && snprintf(cmd, sizeof cmd, "[ -f '%s/openmpc-pm-splash' ] && cp '%s/openmpc-pm-splash' '" WORK "/splash.new' && chmod 755 '" WORK "/splash.new' && "
+                                 "mv '" WORK "/splash.new' '" WORK "/splash'", src, src) < (int)sizeof cmd)
+                sh(cmd);
         }
         if (m->dev->vst2) {   /* MPC OS 3.10.1: the folder copier / plugin.json writer (tools/vst2_migrate.sh), run while MPC is stopped */
             FILE *v = fopen(WORK "/vst2.sh", "w");
@@ -3079,6 +3096,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
          * MPC is stopped here, so nothing has the files open: empty it before MPC starts again, so the manager's own restarts do not fill it. */
         fprintf(f, "if ! pidof MPC >/dev/null; then rm -f /var/volatile/tmp/filmstrips/temp_*.img 2>/dev/null; echo '-- image cache emptied'; fi\n"
                    "progress start '' ''; rm -f \"$J\"; sync\n"
+                   "[ -n \"$SPL\" ] && sleep 1; splash_stop   # \"Starting MPC\" stays on the screen until MPC draws its own\n"
                    "pidof MPC >/dev/null || systemctl start acvs\nrm -f \"$0\"\necho \"== done $(date)\"\n");
         fclose(f);
     }

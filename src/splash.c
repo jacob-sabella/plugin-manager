@@ -1,17 +1,18 @@
 /* OpenMPC Plugin Manager update screen: what apply.sh is doing, on the MPC's own display, while MPC is stopped.
  *
  *   openmpc-pm-splash PROGRESS [NAMES]                     draw on /dev/dri/card0 until apply.sh stops it
- *   openmpc-pm-splash --ppm OUT [--size WxH] [--rot R] [--tick N] [--state LINE] [--names FILE]    one frame to a PPM
+ *   openmpc-pm-splash --ppm OUT[.png] [--size WxH] [--rot R] [--tick N] [--state LINE] [--names FILE]    one frame to a PPM
  *
  * PROGRESS is apply.sh's progress file: one line "step<TAB>of<TAB>act<TAB>id<TAB>version" (act: install, remove,
  * register, theme, move, start). NAMES is "id<TAB>display name" lines (the Manager writes it next to apply.sh).
  *
- * Display: MPC is the only DRM client and is stopped while this runs, so this opens card0, takes master (or gives up
+ * Display: on Gen2 MPC OS 3.x Akai's own splash shows it (via_splashctl below). Elsewhere MPC is the only DRM client and is
+ * stopped while this runs, so this opens card0, takes master (or gives up
  * at once if anyone else holds it), sets the first connected connector's preferred mode with one dumb buffer, and
  * redraws a few times a second. MPC fails to start ("Failed to initialise display") while another process holds the
  * display (see the DrmVnc crash loop), so this lets go in every way it can: apply.sh kills it and waits for it before
- * starting MPC, it exits when its parent dies (PR_SET_PDEATHSIG and a getppid check), when PROGRESS goes away, and
- * after an hour in any case. It never touches MPC's files and nothing it does survives a reboot.
+ * starting MPC, it exits when its parent dies (PR_SET_PDEATHSIG and a getppid check), when PROGRESS goes away, as soon as
+ * MPC runs (an older installer may start it) and after an hour in any case. It never touches MPC's files and nothing it does survives a reboot.
  *
  * Orientation: the panels are portrait 800x1280 scanned out sideways (MPC rotates its landscape picture); like
  * force-shadow (DESIGN.md "Rendering orientation") everything is drawn in landscape coordinates through one put()
@@ -31,9 +32,9 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#ifndef PM_SPLASH_NO_DRM
+#include <dirent.h>
+#include <sys/wait.h>
 #include "splash_drm.h"
-#endif
 #include "splash_font.h"
 #pragma GCC diagnostic ignored "-Wformat-truncation"   /* names and lines are cut to fit on purpose */
 
@@ -185,7 +186,7 @@ static void render(canvas_t *c, const prog_t *p, const char *names, unsigned tic
     text_c(c, tf, cx, py + ph * 18 / 100 + (sfont_l.h - tf->h) / 2, what, TEXT, PANEL);
     char sl[64];
     if (done) snprintf(sl, sizeof sl, "Finished");
-    else if (p->of > 0) snprintf(sl, sizeof sl, "Step %d of %d", p->step, p->of);
+    else if (p->of > 0 && p->step > 0) snprintf(sl, sizeof sl, "Step %d of %d", p->step, p->of);
     else *sl = 0;
     text_c(c, &sfont_m, cx, py + ph * 45 / 100, sl, SUBTEXT, PANEL);
 
@@ -227,6 +228,79 @@ static int write_ppm(const char *out, canvas_t *c) {
     return fclose(f) ? 1 : 0;
 }
 
+/* PNG with stored (uncompressed) deflate blocks: no zlib needed; about 3 MB for 1280x800, written to RAM (/tmp). Written to
+ * OUT.new and renamed, so a reader (az0x-splash) never sees half a file. */
+static uint32_t crc_tab[256];
+static uint32_t crc(uint32_t c, const unsigned char *b, size_t n) {
+    if (!crc_tab[1]) for (uint32_t i = 0; i < 256; i++) { uint32_t v = i; for (int k = 0; k < 8; k++) v = v & 1 ? 0xedb88320u ^ (v >> 1) : v >> 1; crc_tab[i] = v; }
+    c = ~c;
+    while (n--) c = crc_tab[(c ^ *b++) & 255] ^ (c >> 8);
+    return ~c;
+}
+static void be32(unsigned char *p, uint32_t v) { p[0] = v >> 24; p[1] = v >> 16; p[2] = v >> 8; p[3] = v; }
+static void chunk(FILE *f, const char *type, const unsigned char *d, uint32_t n) {
+    unsigned char h[8];
+    be32(h, n); memcpy(h + 4, type, 4);
+    fwrite(h, 1, 8, f); if (n) fwrite(d, 1, n, f);
+    uint32_t c = crc(crc(0, (const unsigned char *)type, 4), d, n);
+    be32(h, c); fwrite(h, 1, 4, f);
+}
+static int write_png(const char *out, canvas_t *c) {
+    size_t row = 1 + (size_t)c->bw * 3, raw = row * c->bh, nblk = (raw + 65534) / 65535;
+    size_t zn = 2 + raw + nblk * 5 + 4;
+    unsigned char *z = malloc(zn), *r = malloc(row);
+    if (!z || !r) { free(z); free(r); return 1; }
+    size_t zi = 0, done = 0;
+    uint32_t a = 1, b = 0;
+    z[zi++] = 0x78; z[zi++] = 0x01;
+    unsigned char blk[65535];
+    size_t bi = 0;
+    for (int y = 0; y <= c->bh; y++) {
+        size_t rn = 0;
+        if (y < c->bh) {
+            r[0] = 0;
+            for (int x = 0; x < c->bw; x++) { uint32_t v = c->px[y * c->stride + x]; r[1 + x * 3] = v >> 16; r[2 + x * 3] = v >> 8; r[3 + x * 3] = v; }
+            rn = row;
+        }
+        for (size_t i = 0; i < rn; i++) {
+            blk[bi++] = r[i];
+            a = (a + r[i]) % 65521; b = (b + a) % 65521;
+            if (bi == sizeof blk) goto flush;
+            continue;
+        flush:
+            done += bi;
+            z[zi++] = done == raw; z[zi++] = bi & 255; z[zi++] = bi >> 8; z[zi++] = ~bi & 255; z[zi++] = (~bi >> 8) & 255;
+            memcpy(z + zi, blk, bi); zi += bi; bi = 0;
+        }
+        if (y == c->bh && bi) {
+            done += bi;
+            z[zi++] = 1; z[zi++] = bi & 255; z[zi++] = bi >> 8; z[zi++] = ~bi & 255; z[zi++] = (~bi >> 8) & 255;
+            memcpy(z + zi, blk, bi); zi += bi; bi = 0;
+        }
+    }
+    be32(z + zi, b << 16 | a); zi += 4;
+    char tmp[4096];
+    snprintf(tmp, sizeof tmp, "%s.new", out);
+    FILE *f = fopen(tmp, "wb");
+    int ret = 1;
+    if (f) {
+        static const unsigned char sig[8] = { 137, 'P', 'N', 'G', 13, 10, 26, 10 };
+        unsigned char ih[13];
+        be32(ih, c->bw); be32(ih + 4, c->bh); ih[8] = 8; ih[9] = 2; ih[10] = ih[11] = ih[12] = 0;
+        fwrite(sig, 1, 8, f);
+        chunk(f, "IHDR", ih, 13);
+        chunk(f, "IDAT", z, zi);
+        chunk(f, "IEND", NULL, 0);
+        ret = (fclose(f) || rename(tmp, out)) ? 1 : 0;
+    } else perror(tmp);
+    free(z); free(r);
+    return ret;
+}
+static int write_image(const char *out, canvas_t *c) {
+    size_t n = strlen(out);
+    return n > 4 && !strcmp(out + n - 4, ".png") ? write_png(out, c) : write_ppm(out, c);
+}
+
 static int auto_rot(int bw, int bh) {
     const char *e = getenv("PM_SPLASH_ROT");
     if (e && *e) { int r = atoi(e); if (r == 0 || r == 90 || r == 180 || r == 270) return r; }
@@ -258,14 +332,94 @@ static int offline(int argc, char **argv) {
     prog_t p;
     if (parse(state, &p)) { fprintf(stderr, "bad --state\n"); return 2; }
     render(&c, &p, names, tick);
-    int r = write_ppm(out, &c);
+    int r = write_image(out, &c);
     free(px);
     return r;
 }
 
-#ifndef PM_SPLASH_NO_DRM
 static volatile sig_atomic_t stop;
 static void on_sig(int s) { (void)s; stop = 1; }
+static pid_t parent;
+static time_t t0;
+
+/* MPC itself is running (an older installer can start it in the middle of an update): never draw over it. */
+static int mpc_running(void) {
+    const char *exe = getenv("PM_SPLASH_MPC_EXE");
+    if (!exe || !*exe) exe = "/usr/bin/MPC";
+    DIR *d = opendir("/proc");
+    if (!d) return 0;
+    struct dirent *e;
+    int yes = 0;
+    while (!yes && (e = readdir(d))) {
+        if (e->d_name[0] < '1' || e->d_name[0] > '9') continue;
+        char l[64], t[4096];
+        snprintf(l, sizeof l, "/proc/%s/exe", e->d_name);
+        ssize_t n = readlink(l, t, sizeof t - 1);
+        if (n > 0) { t[n] = 0; yes = !strcmp(t, exe); }
+    }
+    closedir(d);
+    return yes;
+}
+/* Keep drawing? Not when told to stop, when apply.sh is gone, after an hour, or once MPC runs. */
+static int carry_on(void) {
+    return !stop && getppid() == parent && time(NULL) - t0 <= 3600 && !mpc_running();
+}
+static void nap(long ms) { struct timespec ts = { ms / 1000, (ms % 1000) * 1000000L }; nanosleep(&ts, NULL); }
+
+/* ---- Akai's own splash (Gen2 MPC OS 3.x): az0x-splash owns the display whenever MPC does not, and az0x-splashctl show-image puts a
+ * 1280x800 landscape PNG on it (it turns the picture for the panel itself), like its own "Update Mode" screen. --drop makes it let go
+ * of the display again at once: the picture stays up, and MPC can start at any moment (with the default --keep, MPC fails to start
+ * until "az0x-splashctl drop-display"; Live III, 2026-11-21). Nothing here ever holds the display. */
+static const char *ctl_path(void) { const char *c = getenv("PM_SPLASHCTL"); return c && *c ? c : "/usr/bin/az0x-splashctl"; }
+static int have_splashctl(void) {
+    const char *sock = getenv("PM_SPLASH_SOCK");
+    if (!sock || !*sock) sock = "/run/az0x-splash-control";
+    struct stat st;
+    return access(ctl_path(), X_OK) == 0 && stat(sock, &st) == 0;
+}
+static int show_png(const char *png) {   /* az0x-splashctl show-image --drop PNG, at most 3 s */
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (!pid) {
+        int nul = open("/dev/null", O_RDWR);
+        if (nul >= 0) { dup2(nul, 1); dup2(nul, 2); }
+        execl(ctl_path(), ctl_path(), "show-image", "--drop", png, (char *)NULL);
+        _exit(127);
+    }
+    for (int i = 0; i < 150; i++) {
+        int st;
+        pid_t r = waitpid(pid, &st, WNOHANG);
+        if (r == pid) return WIFEXITED(st) && WEXITSTATUS(st) == 0 ? 0 : -1;
+        if (r < 0 && errno != EINTR) return -1;
+        nap(20);
+    }
+    kill(pid, SIGKILL); waitpid(pid, NULL, 0);
+    return -1;
+}
+static int via_splashctl(const char *prog_path, const char *names) {
+    char png[4096];
+    const char *sl = strrchr(prog_path, '/');
+    snprintf(png, sizeof png, "%.*s/screen.png", sl ? (int)(sl - prog_path) : 1, sl ? prog_path : ".");
+    uint32_t *px = malloc(1280 * 800 * 4);
+    if (!px) return 3;
+    canvas_t c;
+    setup(&c, px, 1280, 800, 1280, 0);
+    prog_t p;
+    int gone = 0, fails = 0, shown = 0;
+    for (unsigned tick = 0; carry_on(); tick += 2) {   /* 4 frames a second; the pulse moves as fast as on the direct display */
+        if (read_prog(prog_path, &p)) { if (++gone > 8) break; nap(250); continue; }   /* gone for 2 s: apply.sh finished */
+        gone = 0;
+        render(&c, &p, names, tick);
+        if (write_png(png, &c) || show_png(png)) {
+            if (++fails >= 3 || !shown) { fprintf(stderr, "splash: az0x-splashctl show-image failed, not drawing\n"); free(px); return 3; }
+        } else { fails = 0; if (!shown++) fprintf(stderr, "splash: drawing through az0x-splash\n"); }
+        nap(170);   /* + about 80 ms to draw and show */
+    }
+    free(px);
+    return 0;
+}
+
+/* ---- the display itself, where there is no az0x-splash ---- */
 
 static int xioctl(int fd, unsigned long req, void *arg) {
     int r;
@@ -274,11 +428,6 @@ static int xioctl(int fd, unsigned long req, void *arg) {
 }
 
 static int on_display(const char *prog_path, const char *names) {
-    pid_t parent = getppid();
-    prctl(PR_SET_PDEATHSIG, SIGTERM);
-    if (getppid() != parent) return 0;   /* apply.sh already gone */
-    signal(SIGTERM, on_sig); signal(SIGINT, on_sig); signal(SIGHUP, on_sig);
-
     int fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (fd < 0) { fprintf(stderr, "splash: card0: %s\n", strerror(errno)); return 3; }
     if (xioctl(fd, DRM_IOCTL_SET_MASTER, NULL) < 0) { fprintf(stderr, "splash: the display is in use (%s), not drawing\n", strerror(errno)); close(fd); return 3; }
@@ -346,12 +495,10 @@ static int on_display(const char *prog_path, const char *names) {
     fprintf(stderr, "splash: drawing %ux%u rot %d\n", cd.width, cd.height, c.rot);
     ret = 0;
 
-    time_t t0 = time(NULL);
     int gone = 0;
-    for (unsigned tick = 1; !stop; tick++) {
-        struct timespec ts = { 0, 125 * 1000 * 1000 };
-        nanosleep(&ts, NULL);
-        if (getppid() != parent || time(NULL) - t0 > 3600) break;
+    for (unsigned tick = 1; ; tick++) {
+        nap(125);
+        if (!carry_on()) break;
         if (read_prog(prog_path, &p)) { if (++gone > 16) break; continue; }   /* gone for 2 s: apply.sh finished */
         gone = 0;
         render(&c, &p, names, tick);
@@ -367,15 +514,15 @@ out:
     close(fd);
     return ret;
 }
-#endif
 
 int main(int argc, char **argv) {
     if (argc > 1 && argv[1][0] == '-') return offline(argc, argv);
-#ifndef PM_SPLASH_NO_DRM
-    if (argc < 2) { fprintf(stderr, "usage: %s PROGRESS [NAMES] | --ppm OUT ...\n", argv[0]); return 2; }
-    return on_display(argv[1], argc > 2 ? argv[2] : NULL);
-#else
-    fprintf(stderr, "built without the display (PM_SPLASH_NO_DRM)\n");
-    return 2;
-#endif
+    if (argc < 2) { fprintf(stderr, "usage: %s PROGRESS [NAMES] | --ppm OUT[.png] ...\n", argv[0]); return 2; }
+    parent = getppid(); t0 = time(NULL);
+    prctl(PR_SET_PDEATHSIG, SIGTERM);
+    if (getppid() != parent) return 0;   /* apply.sh already gone */
+    signal(SIGTERM, on_sig); signal(SIGINT, on_sig); signal(SIGHUP, on_sig);
+    if (mpc_running()) { fprintf(stderr, "splash: MPC is running, not drawing\n"); return 4; }
+    const char *names = argc > 2 ? argv[2] : NULL;
+    return have_splashctl() ? via_splashctl(argv[1], names) : on_display(argv[1], names);
 }

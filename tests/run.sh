@@ -455,6 +455,18 @@ mv "$T/Faily dir" "$T/.pm-snap-faily"
 PM_SNAP_KB=0 sh /tmp/openmpc-pm/apply.sh
 grep -q "^faily|fail|an earlier update was cut off and left an incomplete safety copy" /tmp/openmpc-pm/result && [ -f "$T/.pm-snap-faily/old" ] || { echo "FAIL: incomplete safety copy"; exit 1; }
 rm -rf "$T/.pm-snap-faily" "$T/Faily dir"
+# the update screen (src/splash.c): copied out of the plugin folder with the names, started once MPC is stopped, stopped before MPC starts
+mkdir -p /tmp/splashown/bgserver-gen1
+printf "#!/bin/sh\necho \"splash: up \$1 \$2\"\ntrap \"echo splash: stopped; exit 0\" TERM\nwhile :; do sleep 0.2; done\n" > /tmp/splashown/bgserver-gen1/openmpc-pm-splash
+chmod +x /tmp/splashown/bgserver-gen1/openmpc-pm-splash
+cp /usr/bin/systemctl /tmp/systemctl.keep; printf "#!/bin/sh\necho \"systemctl \$*\"\n" > /usr/bin/systemctl
+rm -rf /tmp/openmpc-pm; PM_BG_GEN1=1 PM_OWN=/tmp/splashown /tmp/drive_addins one Faily > /dev/null
+[ -x /tmp/openmpc-pm/splash ] && grep -q "^faily$(printf "\t")Faily$" /tmp/openmpc-pm/names || { ls -la /tmp/openmpc-pm; echo "FAIL: the update screen was not copied out"; exit 1; }
+mkdir -p "$T/Faily dir" && echo old > "$T/Faily dir/old"; rm -rf "$T/Faily dir/partial"
+sh /tmp/openmpc-pm/apply.sh
+grep -E "^(splash|systemctl)" /tmp/openmpc-pm/apply.log | tr "\n" "," > /tmp/splash-order
+grep -qx "systemctl stop acvs,splash: up /tmp/openmpc-pm/progress /tmp/openmpc-pm/names,splash: stopped,systemctl start acvs," /tmp/splash-order || { cat /tmp/splash-order; echo; echo "FAIL: the update screen must run only while MPC is stopped"; exit 1; }
+cp /tmp/systemctl.keep /usr/bin/systemctl; rm -rf /tmp/splashown "$T/Faily dir"
 # a finished apply leaves no journal
 JR="$(find /media /data -name MPC.settings 2>/dev/null | head -n 1 | sed "s:/Settings/.*::")/.openmpcpm-journal" || true
 [ ! -e "$JR" ] || { cat "$JR"; ls -la "$(dirname "$JR")"; echo "FAIL: a finished apply left its journal"; exit 1; }
@@ -669,6 +681,36 @@ for st in "1${TB}1${TB}remove${TB}x${TB}" "3${TB}3${TB}start${TB}${TB}" "1${TB}2
   /tmp/splash --ppm /tmp/x.ppm --state "$st"
 done
 ! /tmp/splash --ppm /tmp/x.ppm --size 10x10 2>/dev/null
+# Gen2: frames go to Akai'"'"'s splash as PNGs, always with --drop (it lets go of the display at once, so MPC can start at any time)
+rm -rf /tmp/sp; mkdir -p /tmp/sp; : > /tmp/sp/sock
+printf "#!/bin/sh\necho \"\$*\" >> /tmp/sp/ctl.log\n" > /tmp/sp/ctl; chmod +x /tmp/sp/ctl
+printf "1${TB}2${TB}install${TB}model-72${TB}1.0.0\n" > /tmp/sp/progress
+export PM_SPLASHCTL=/tmp/sp/ctl PM_SPLASH_SOCK=/tmp/sp/sock
+/tmp/splash /tmp/sp/progress /tmp/names 2>/tmp/sp/err & SP=$!
+sleep 2; rm /tmp/sp/progress
+r=0; wait $SP || r=$?
+[ "$r" = 0 ] && [ "$(grep -c "^show-image --drop /tmp/sp/screen.png$" /tmp/sp/ctl.log)" -ge 3 ] && [ "$(sort -u /tmp/sp/ctl.log | wc -l)" = 1 ] || { cat /tmp/sp/err /tmp/sp/ctl.log; echo "FAIL: az0x-splash frames"; exit 1; }
+python3 - <<EOP   # a 1280x800 RGB PNG (stored deflate) whose pixels decode
+import struct, zlib
+d = open("/tmp/sp/screen.png", "rb").read(); assert d[:8] == b"\x89PNG\r\n\x1a\n"
+w, h, bd, ct = struct.unpack(">IIBB", d[16:26]); assert (w, h, bd, ct) == (1280, 800, 8, 2)
+i = d.index(b"IDAT"); n = struct.unpack(">I", d[i - 4:i])[0]; raw = zlib.decompress(d[i + 4:i + 4 + n])
+assert len(raw) == 800 * (1 + 1280 * 3) and zlib.crc32(d[i:i + 4 + n]) == struct.unpack(">I", d[i + 4 + n:i + 8 + n])[0]
+EOP
+# MPC running (an older installer may start it): not a frame drawn, and a running screen stops at once
+printf "1${TB}2${TB}install${TB}model-72${TB}1.0.0\n" > /tmp/sp/progress; : > /tmp/sp/ctl.log
+sleep 30 & SL=$!; sleep 0.2
+r=0; PM_SPLASH_MPC_EXE=$(readlink /proc/$SL/exe) /tmp/splash /tmp/sp/progress 2>/dev/null || r=$?; kill $SL; wait $SL 2>/dev/null || true
+[ "$r" = 4 ] && [ ! -s /tmp/sp/ctl.log ] || { echo "FAIL: drew while MPC runs ($r)"; exit 1; }
+PM_SPLASH_MPC_EXE=/tmp/sp/mpc /tmp/splash /tmp/sp/progress 2>/dev/null & SP=$!
+sleep 1; cp "$(readlink -f /bin/sleep)" /tmp/sp/mpc; /tmp/sp/mpc 30 & SL=$!
+for i in $(seq 30); do kill -0 $SP 2>/dev/null || break; sleep 0.1; done
+! kill -0 $SP 2>/dev/null || { kill $SP; echo "FAIL: kept drawing after MPC started"; exit 1; }
+kill $SL; wait $SL 2>/dev/null || true
+# az0x-splashctl failing: gives up (3), apply.sh carries on without a screen
+printf "#!/bin/sh\nexit 1\n" > /tmp/sp/ctl
+r=0; /tmp/splash /tmp/sp/progress 2>/dev/null || r=$?; [ "$r" = 3 ] || { echo "FAIL: a failing splashctl ($r)"; exit 1; }
+unset PM_SPLASHCTL PM_SPLASH_SOCK
 r=0; /tmp/splash /tmp/no-such-progress 2>/tmp/splash.err || r=$?
 [ "$r" = 3 ] && grep -q "card0" /tmp/splash.err   # no display (or one in use): gives up at once, apply.sh carries on
 echo "splash OK"
