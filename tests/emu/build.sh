@@ -84,5 +84,29 @@ for arch in armv7 aarch64; do
     echo "# settings" > "$w/addin/emu_addin.conf"
     python3 "$MV/tools/release_addin.py" --dir "$w/addin" --version 1.0.0 --repo acme/mpc-addin-emu --license MIT --about "A stand-in addin for the emulator tests." -o "$w/dist" >/dev/null
 done
+
+# the MPC Sample's (aarch64 only; served as files, not in the catalog the Manager reads): a real VST2 effect MPC can load, and the RACK
+# addin. RACK is the published 1.0.0 release's binaries, packaged again with this mpc-vst-plugins' addin installer: the published zip
+# carries an older installer (see FINDINGS.md). RACK_ZIP: a local copy of that zip, else it is downloaded (and checked).
+echo "== MPC Sample packages"
+w="$out/fixture-work/aarch64"; rm -rf "$w/fx" "$w/rack"; mkdir -p "$w/fx/skin/acme - VST - Emu FX/Plugin Skins" "$w/rack"
+docker run --rm --platform linux/arm64 -u "$U" -v "$here/src":/s:ro -v "$w/fx":/o arm64v8/gcc:12-bookworm bash -euc "
+    gcc -O2 -Wall -fPIC -shared -fvisibility=hidden -o /o/emu_fx.so /s/fxprobe.c && strip /o/emu_fx.so"
+echo '{}' > "$w/fx/skin/acme - VST - Emu FX/Plugin Skins/TUI.json"
+printf '<?xml version="1.0" encoding="utf-8"?>\n<plugincontent version="1.0">\n\t<identifier>acme.vst.emufx</identifier>\n\t<version>1.0.0.0</version>\n</plugincontent>\n' > "$w/fx/skin/acme - VST - Emu FX/version.xml"
+echo '<PLUGIN name="Emu FX" descriptiveName="Emu FX" format="VST" category="Effect" manufacturer="acme" version="1.0" file="/sdcard/Synths/acme - VST - Emu FX/emu_fx.so" uid="456d4658" isInstrument="0" fileTime="0" infoUpdateTime="0" numInputs="2" numOutputs="2" isShell="0"/>' > "$w/fx/entry.xml"
+python3 "$MV/tools/release.py" --so "$w/fx/emu_fx.so" --skin "$w/fx/skin/acme - VST - Emu FX" --entry "$w/fx/entry.xml" --version 1.0.0 \
+    --id emu-fx --repo acme/mpc-vst-emu-fx --license MIT --about "A stand-in effect for the MPC Sample emulator tests." -o "$w/dist" >/dev/null
+RACK_URL=https://github.com/jacob-sabella/mpc-addin-sample-rack/releases/download/sample-rack-addin-v1.0.0/MPC-Sample-rack-addin-1.0.0-mpc-aarch64.zip
+RACK_SHA=b40080989a1744c535e33b4d9c0f42b5f58a6f76c2000174f317da8c7139b1bb
+rz="$out/cache/MPC-Sample-rack-addin-1.0.0-mpc-aarch64.zip"; mkdir -p "$out/cache"
+if [ -n "${RACK_ZIP:-}" ]; then cp "$RACK_ZIP" "$rz"; elif [ ! -f "$rz" ]; then curl -fsSL -o "$rz" "$RACK_URL"; fi
+echo "$RACK_SHA  $rz" | sha256sum -c --quiet - || { echo "the RACK addin zip is not the published 1.0.0" >&2; exit 1; }
+python3 -c 'import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); [open(sys.argv[2] + "/" + n.split("/", 1)[1], "wb").write(z.read(n)) for n in z.namelist()
+  if n.split("/", 1)[1] in ("addin.manifest", "mpc_sample_rack.so", "mpc_sample_rack.conf", "sample-rack-apply")]' "$rz" "$w/rack"
+chmod 755 "$w/rack/sample-rack-apply"
+python3 "$MV/tools/release_addin.py" --dir "$w/rack" --version 1.0.0 --repo jacob-sabella/mpc-addin-sample-rack --license MIT \
+    --about "The MPC Sample's RACK addin (published 1.0.0 binaries) for the emulator tests." -o "$w/dist" >/dev/null
+ls "$w/dist/Emu-FX-1.0.0-mpc-aarch64.zip" "$w/dist/MPC-Sample-rack-addin-1.0.0-mpc-aarch64.zip" >/dev/null
 python3 "$here/fixture.py" "$out" "$label" $VA $VB
 git -C "$pm" rev-parse ${ref:-HEAD} > "$fx/commit" 2>/dev/null || true

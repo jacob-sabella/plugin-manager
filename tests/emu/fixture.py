@@ -78,6 +78,9 @@ FAIL_SH = ('#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -t ] && T=$2; shift; done
            'mkdir -p "$T/acme - VST - Faily" && echo partial > "$T/acme - VST - Faily/partial" && echo "disk full" && exit 3\n')
 handmade("faily", "Faily", [("install.sh", FAIL_SH), ("uninstall.sh", "#!/bin/sh\nexit 0\n"),
                             ("mpc-plugin.json", '{"schema": 1, "id": "faily", "folder": "portable/acme - VST - Faily"}\n')], "2025-03-01")
+# the MPC Sample's packages (sample_scenarios.py): served, not in the catalog (the Sample has no Manager to read it)
+for n in ("Emu-FX-1.0.0-mpc-aarch64.zip", "MPC-Sample-rack-addin-1.0.0-mpc-aarch64.zip"):
+    take(w("aarch64", n))
 json.dump({"schema": 1, "generated": "2026-03-01T00:00:00Z", "plugins": plugins, "collections": []}, open(os.path.join(fx, "catalog.full.json"), "w"), indent=1)
 json.dump({"schema": 1, "patches": []}, open(os.path.join(fx, "patches.json"), "w"), indent=1)
 print("fixture: %d entries, %d files in %s" % (len(plugins), len(os.listdir(fx)), fx))
