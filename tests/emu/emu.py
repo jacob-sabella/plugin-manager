@@ -262,8 +262,10 @@ class VM:
         return ["ssh", "-q", "-p", str(self.ssh_port), "-i", self.key, "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=no",
                 "-o", "UserKnownHostsFile=/dev/null", "-o", "ConnectTimeout=8", "-o", "LogLevel=ERROR", "root@127.0.0.1"]
 
-    def sh(self, cmd, timeout=120, check=True, input=None):
-        """Run a shell command in the guest: (exit status, output). check=True raises on a non-zero status."""
+    def sh(self, cmd, timeout=None, check=True, input=None):
+        """Run a shell command in the guest: (exit status, output). check=True raises on a non-zero status. The default timeout is
+        120 s times PM_EMU_TIMESCALE: on a hosted runner a guest just booted can take over 120 s to grep the MPC binary."""
+        if timeout is None: timeout = int(slow(120))
         try:
             r = subprocess.run(self._ssh() + [cmd], capture_output=True, timeout=timeout, input=input)
         except subprocess.TimeoutExpired:
