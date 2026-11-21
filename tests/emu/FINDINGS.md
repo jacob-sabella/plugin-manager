@@ -68,6 +68,53 @@ put for a minute restarts MPC and starts over (twice at most); the navigator's c
 The scenarios' own taps on the Manager wait for a still screen and read the state once it holds. `PM_EMU_TIMESCALE` multiplies every
 timeout; `run.sh` sets 4 on GitHub Actions. Desktop runs take about as long as before.
 
+## The MPC Sample (added 2026-11-20)
+
+Instance `mpc-sample-130` (AC50, MPC Sample 1.3.0.12, from `MPC_SAMPLE_1.3.0_UPDATE.exe`, QEngine 83a03e5 unmodified): the instance
+builds in about a minute, ssh answers after 28 s, MPC Sample runs after 29 s and shows its main screen after 36 s; the machine
+snapshot takes 70 s. The Sample has no plugin browser, so the Manager's scenarios are not run on it; `sample_scenarios.py` tests what a
+user does today instead (`sample.py` holds the machine): `sample_install`, `sample_plugin_loads`, `sample_reboot`, `sample_uninstall`,
+all passing. A new fixture effect (`src/fxprobe.c`, a real VST2 effect that logs when MPC loads it) is installed with its release
+zip's `install.sh -t /media/MPCSD/Synths`, put into the project's main output by the RACK addin's apply helper, and loaded by MPC once
+the card's Synths folder is bind-mounted exec, as in mpc-vst-plugins' NOTES (2026-11-04/05).
+
+What the instance needed (all in the harness, nothing in QEngine):
+
+* **Network.** MPC Sample tells connman to switch wired networking off when it starts (its SSH runs over the USB gadget link), so
+  the emulator's NIC went down and ssh never answered. The serial set-up now, only when the guest has no default route, tells
+  connman to leave the NIC alone (a copy of its main.conf in /run) and gives it QEMU's usual address. Other machines have a route.
+* **The SD card.** QEngine's udev rule makes edisksd ignore every virtio disk. A rule of the harness's lets its own disk through
+  (exFAT, label MPCSD), and MPC Sample then mounts it itself at `/media/MPCSD` with the device's options (`noexec,nosuid,nodev,nosymfollow`).
+* **The settings file.** A new MPC Sample writes no `MPC Sample.settings` at all, not even on stop; it writes one the first time it
+  has something to keep, which is the card's Synths folder (added to SynthContentLocations as it starts). Every installer needs that
+  file. The machine has the folder and the file.
+* **A root that cannot be remounted.** QEngine's root can be remounted read-write, the device's cannot (the addin installer put its
+  drop-in in /run there). With a remountable root the addin would survive a reboot in the emulator and not on the device, so the
+  machine sets the ext4 `read-only` feature on its root.
+
+Bugs found on the Sample (not fixed here):
+
+* **The published RACK addin 1.0.0 zip does not install on a Sample.** Its bundled `addin-lib.sh` predates the Sample: it picks
+  `acvs` as MPC's service, writes `/run/systemd/system/acvs.service.d/90-mpc-addins.conf` and stops with "Unit acvs.service not
+  found" (exit 5); MPC never preloads it. And its `install.sh` copies `sample-rack-apply` as 644, so RACK's APPLY would fail
+  (systemd-run: 203/EXEC). mpc-vst-plugins' current addin installer has both right (ac50; executable by content); the harness packages
+  the published 1.0.0 binaries with it, and then the install, the preload and the apply work. The fix is a re-release of the addin.
+* **`install.sh` and `uninstall.sh` without `-t`.** Neither looks at the card. `install.sh` stops with "cannot create /sdcard/Synths"
+  (nothing changed). `uninstall.sh` reports success, removes the settings entry (matched by uid) and leaves the plugin's folder on
+  the card, unlisted. `mpc-store.sh` has the same `/sdcard/Synths` default (not run here).
+* **Wording.** The noexec warning advises `-t /sdcard/Synths` or the Gen1 auto exec patch, neither of which applies to a Sample, and
+  install.sh ends with "Add ... to a track from the plugin browser", which the Sample has not got.
+
+The reboot (recorded as findings by `sample_reboot`, as on the device in NOTES 2026-11-05): after a clean power-off and on, MPC
+mounts the card again (noexec), the plugin is still on the card, in the settings and in the project, but the exec bind mount is gone
+and MPC logs only "Attempting to load VST" for it: nothing loads and nothing says so. The addin's /run drop-in is gone too, so MPC
+starts without RACK. Binding the folder exec again and restarting MPC brings the plugin back. With the card noexec from the start the
+same silent failure is seen (`sample_plugin_loads`). After an uninstall, MPC starts with a project that still names the plugin and
+runs on without it.
+
+Not covered: `mpc-store.sh` and catalog entries limited to `mpc-sample` (the fixture has no catalog.tsv); the RACK page itself and the
+draw handler (the apply helper is driven directly, as RACK's APPLY runs it); a real SD card and edisksd's handling of one; audio.
+
 ## What the emulator cannot cover
 
 * MPC OS 3.10.1 loading a plugin from an attached drive. (3.10.1 itself is covered since 2026-11-20: instances `mpc-g1-3101` and
