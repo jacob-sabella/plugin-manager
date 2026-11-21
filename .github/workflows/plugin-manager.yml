@@ -55,7 +55,7 @@ jobs:
           repository: open-mpc/mpc-vst-plugins
           ref: ${{ env.TOOLS_REF }}
           path: .mpc-vst-plugins
-      - name: Offline tests, section ${{ matrix.section }} (host test under ASan; no network: tests/catalog-snapshot.json stands in for the live catalog)
+      - name: Offline tests, section ${{ matrix.section }} (host test under ASan; no network, tests/catalog-snapshot.json stands in for the live catalog)
         env:
           ONLY: ${{ matrix.section }}
           MPC_VST: ${{ github.workspace }}/.mpc-vst-plugins
