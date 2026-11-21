@@ -13,7 +13,7 @@ from emu import Fail, log, slow
 from run import T, sample_scenario
 
 FX = "Emu-FX-1.0.0"                                       # the fixture effect (src/fxprobe.c), as a release zip
-RACK = "MPC-Sample-rack-addin-1.0.0"                      # the RACK addin's binaries, packaged with mpc-vst-plugins' addin installer
+RACK = "MPC-Sample-rack-addin-"                          # the RACK addin as build.sh serves it (rack_name(): its version follows)
 FOLDER = sample.SYNTHS + "/acme - VST - Emu FX"
 SO = FOLDER + "/emu_fx.so"
 FXLOG = "/tmp/emu-fx.log"                                 # the effect writes a line here when MPC loads it
@@ -58,9 +58,16 @@ def installed_fx(t):
     return out
 
 
+def rack_name(t):
+    """The RACK release the fixture serves (one), e.g. MPC-Sample-rack-addin-1.0.0: build.sh's default, or RACK_REPACK=0's zip."""
+    n = sorted(f[:-len("-mpc-aarch64.zip")] for f in os.listdir(t.fx.src) if f.startswith(RACK) and f.endswith("-mpc-aarch64.zip"))
+    if len(n) != 1: raise Fail("the fixture has %d RACK zips: run tests/emu/build.sh" % len(n))
+    return n[0]
+
+
 def install_rack(t):
-    """The RACK addin, with the addin installer. Returns its output."""
-    d = unpack(t, RACK)
+    """The RACK addin, with its zip's own install.sh. Returns its output."""
+    d = unpack(t, rack_name(t))
     rc, out = t.vm.sh("cd %s && sh install.sh -y 2>&1" % d, check=False, timeout=int(slow(180)))
     if not t.check(rc == 0, "the RACK addin's install.sh: %s" % out[-600:]): raise Fail("no RACK addin")
     sample.wait_mpc(t.vm)
