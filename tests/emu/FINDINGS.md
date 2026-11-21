@@ -52,6 +52,22 @@ Manager's embedded copy of `vst2_migrate.sh` was regenerated from it, and the em
 * The package installer does not add its `-t` folder to `SynthContentLocations`; it warns that the plugin will have no skin.
 * The installers leave one `MPC.settings.bak-*` per run beside MPC.settings; the Manager prunes them after a successful apply.
 
+## The harness on a slow host (GitHub-hosted runners)
+
+A hosted runner runs the guest about 3.3 times slower than a desktop. `power_cut_mid_apply` failed there on `mpc-g2-3101`: after
+the reboot the navigator ended on a drum track's sample editor and waited until it gave up. Reproduced on a desktop by limiting the
+container to 0.4 CPU. The navigator acted on screens that were still being drawn: its "dialog: tap the left button" also matched
+the project's loading dialog, whose CANCEL is at that place ("Operation cancelled"), and a plugin's loading dialog, where the tap
+reaches TRACK - beneath; it also tracked what it had done in flags, so a tap that was not taken left it tapping the plugin field of
+a drum track; and its double tap on the plugin field, spaced as two taps, came to a slow MPC as two single taps.
+
+Now (emu.py `settle`, `press`; prepare.py `open_manager`): every step reads a screen that has stopped changing and waits after a
+tap for the screen to change, so a step that did not take is seen and repeated; a progress dialog is waited out; a dialog's button
+is read before it is tapped; the selected track is read from its panel; the double tap is tight; a screen nothing knows that stays
+put for a minute restarts MPC and starts over (twice at most); the navigator's captures go to the results (`nav/`) when it fails.
+The scenarios' own taps on the Manager wait for a still screen and read the state once it holds. `PM_EMU_TIMESCALE` multiplies every
+timeout; `run.sh` sets 4 on GitHub Actions. Desktop runs take about as long as before.
+
 ## What the emulator cannot cover
 
 * MPC OS 3.10.1 loading a plugin from an attached drive. (3.10.1 itself is covered since 2026-11-20: instances `mpc-g1-3101` and
