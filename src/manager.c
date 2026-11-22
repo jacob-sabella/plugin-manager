@@ -3410,6 +3410,19 @@ static char name_initial(const pkg_t *p) {   /* the A-Z filter's letter: the nam
     return c >= 'A' && c <= 'Z' ? c : '#';
 }
 
+/* A local zip's card for a plugin a catalog card already shows as installed (the same folder): INSTALLED lists the plugin once, by its
+ * catalog card. Left in, every zip kept in local-plugins doubled its plugin there, first in the list and with the zip's version rather
+ * than the installed one (a Live III showed "Plugin-Manager-G2-1.3.6" INSTALLED next to 2.0.0, 2026-11-22). A newer zip still shows
+ * under UPDATES, and a zip of a plugin the catalog does not have stays its only card. */
+static int local_twin(const mgr_t *m, const pkg_t *p) {
+    if (strncmp(p->id, "local-", 6) || !installed(p) || !p->folder[0]) return 0;
+    for (int i = 0; i < m->npkg; i++) {
+        const pkg_t *q = &m->pkg[i];
+        if (q != p && strncmp(q->id, "local-", 6) && installed(q) && !strcmp(q->folder, p->folder)) return 1;
+    }
+    return 0;
+}
+
 static int visible_now(const mgr_t *m, int *idx) {
     int n = 0;
     for (int i = 0; i < m->npkg; i++) {
@@ -3423,7 +3436,7 @@ static int visible_now(const mgr_t *m, int *idx) {
         if (m->tab == 0 && installed(p)) continue;   /* DISCOVER: what isn't on this MPC yet */
         if (m->tag[0] && !has_tag(p, m->tag)) continue;
         if (m->q[0] && !matches(p, m->q)) continue;
-        if (m->tab == 1 && !installed(p)) continue;
+        if (m->tab == 1 && (!installed(p) || local_twin(m, p))) continue;
         if (m->tab == 2 && !has_update(p)) continue;
         idx[n++] = i;
     }

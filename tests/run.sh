@@ -665,6 +665,12 @@ rm -rf /tmp/openmpc-pm; /tmp/drive_addins localcard > /tmp/safe-localcard.out
 grep -q "card 1: PL .* state=3 inst=1 .* local zip" /tmp/safe-localcard.out || { cat /tmp/safe-localcard.out; echo "FAIL: a local zip of an installed plugin is not shown as installed"; exit 1; }
 grep -q "card 1: PL .* state=6 " /tmp/safe-localcard.out && grep -q "apply_state 3" /tmp/safe-localcard.out || { cat /tmp/safe-localcard.out; echo "FAIL: Remove on the card of a local zip did not queue and reach ready"; exit 1; }
 grep -q "^item .local-mpc-plaits. .. remove" /tmp/openmpc-pm/apply.sh || { echo "FAIL: no remove step for the local card"; exit 1; }
+# with the catalog listing that plugin too, INSTALLED shows it once, by its catalog card: the card of the zip is not a second,
+# first-sorted copy with the version of the zip (a Live III showed Plugin-Manager-G2-1.3.6 next to 2.0.0, 2026-11-22)
+gcc $SAN -DFS_ANY=1 $LIVE -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive_live
+rm -rf /tmp/openmpc-pm; /tmp/drive_live localcard > /tmp/safe-localtwin.out
+sed -n "/^INSTALLED:/,/^Remove queued:/p" /tmp/safe-localtwin.out > /tmp/safe-localtwin-inst.out
+grep -q "card .: MP .* inst=1 .* by poloq" /tmp/safe-localtwin-inst.out && ! grep -q "local zip" /tmp/safe-localtwin-inst.out || { cat /tmp/safe-localtwin.out; echo "FAIL: INSTALLED shows a local zip next to its catalog card"; exit 1; }
 rm -rf "$LD"
 # backups pile up: after a success only the newest 10 MPC.settings.bak-* stay, and nothing else is touched
 SD=$(dirname "$(find /media /data -name MPC.settings 2>/dev/null | head -n 1)")
