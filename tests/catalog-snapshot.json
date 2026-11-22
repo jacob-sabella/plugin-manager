@@ -1,0 +1,3793 @@
+{
+ "bar": {
+  "archived": "the source repo is archived: unarchive it, or hand the plugin to a new maintainer",
+  "cpu-bench": "run the CPU bench (docs/BENCH.md) so the release records a figure",
+  "cpu-fail": "bring the CPU use down (the bench verdict is FAIL)",
+  "issues-unanswered": "answer the issues that have waited more than 60 days with no reply",
+  "screenshot": "add a screenshot of the plugin screen to the registry entry",
+  "skin": "ship a native MPC skin",
+  "stable-release": "publish a stable (non-beta) release",
+  "tested": "add a tested.json entry for the newest release on a Gen1 device (device and MPC OS version)",
+  "tested-gen2": "add a tested.json entry for the newest release's Gen2 build (a device naming Gen2, e.g. \"MPC Live III (Gen2)\")",
+  "tested-sample": "add a tested.json entry for the newest release on an MPC Sample (device \"MPC Sample\")"
+ },
+ "collections": [],
+ "generated": "2026-11-19T23:04:58Z",
+ "plugins": [
+  {
+   "added": "2026-09-29",
+   "author": "sd88me",
+   "bar_missing": [
+    "cpu-bench",
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 16601,
+   "featured": false,
+   "id": "crate-digger",
+   "kind": "instrument",
+   "latest": "2.2.0",
+   "latest_beta": "1.1.9",
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 1,
+    "unanswered": 0
+   },
+   "name": "Crate Digger",
+   "repo": "sd88me/mpc-vst-cratedigger",
+   "source_available": false,
+   "style": "sample-browser",
+   "summary": "Dig for records by genre, style, decade, region and country on Discogs, then stream and play them into an MPC track, with its own screen skin and Q-Links.",
+   "tags": [
+    "discogs",
+    "streaming"
+   ],
+   "tier": "listed",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-19",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "153503072962cec3e3163daf19851b4a8d04f87e07dba756cb0ebee176483407",
+       "size": 93483505,
+       "url": "https://github.com/sd88me/mpc-vst-cratedigger/releases/download/cratedigger-vst-v2.2.0/Crate-Digger-2.2.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "4cd64788f095fa54fd445fcb5aba10b4103cca83814bd731c2f6cf53d8d912cf",
+       "size": 76997605,
+       "url": "https://github.com/sd88me/mpc-vst-cratedigger/releases/download/cratedigger-vst-v2.2.0/Crate-Digger-2.2.0-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Dig for records by genre, style, decade, region and country on Discogs, then stream and play them into your MPC track. Needs a network connection.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [
+       "Content"
+      ],
+      "folder": "portable/sd88me - VST - Crate Digger",
+      "id": "crate-digger",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "sd88me",
+      "max_glibc": "2.28",
+      "name": "Crate Digger",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 2,
+      "requires": "A network connection (streams from Discogs and the web)",
+      "retire": [],
+      "schema": 1,
+      "skin": "sd88me - VST - Crate Digger",
+      "so": "cratedigger.so",
+      "source_repo": "sd88me/mpc-vst-cratedigger",
+      "uid": "43724467",
+      "user_data": [
+       "channels.txt"
+      ],
+      "user_files": [],
+      "version": "2.2.0",
+      "vst2": true
+     },
+     "max_glibc": "2.28",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 2,
+     "requires": "A network connection (streams from Discogs and the web)",
+     "sha256": "4cd64788f095fa54fd445fcb5aba10b4103cca83814bd731c2f6cf53d8d912cf",
+     "size": 76997605,
+     "url": "https://github.com/sd88me/mpc-vst-cratedigger/releases/download/cratedigger-vst-v2.2.0/Crate-Digger-2.2.0-mpc-armv7.zip",
+     "version": "2.2.0",
+     "vst2": {
+      "folder": "sd88me - VST - Crate Digger"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-19",
+   "author": "kim",
+   "bar_missing": [
+    "cpu-bench",
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 138,
+   "featured": false,
+   "homepage": "https://kimswork.app/plugins/donut-theory/",
+   "id": "donut-theory",
+   "kind": "instrument",
+   "latest": "1.14.2",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "min_os": "3.10.1",
+   "name": "Donut Theory",
+   "repo": "Sunghyun23/kimswork",
+   "source_available": false,
+   "style": "synth",
+   "summary": "Analog-inspired synthesizer for bass, keys, leads and pads, with two oscillators, dual LFOs and up to 16 editable chord slots. Requires MPC OS 3.10.1 or later.",
+   "tags": [
+    "synth",
+    "analog",
+    "chords"
+   ],
+   "tier": "listed",
+   "updated": "2026-11-19",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "46bdafd19fa6b5b0bc3cb51f87304a4b824ee07544f23de96653144592eeed3a",
+       "size": 5869791,
+       "url": "https://github.com/Sunghyun23/kimswork/releases/download/donut-theory/v1.14.2/donut-theory-1.14.2-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "eeab4bc62577ba486da9a2f94892f5f229425f7a12dbf3c2d6e7a3d8b03429d7",
+       "size": 5853833,
+       "url": "https://github.com/Sunghyun23/kimswork/releases/download/donut-theory/v1.14.2/donut-theory-1.14.2-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Soulful polyphonic synth with up to sixteen editable chord slots and independent sound/progression presets.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/kim - VST - Donut Theory",
+      "id": "donut-theory",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "kim",
+      "max_glibc": "2.27",
+      "name": "Donut Theory",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "kim - VST - Donut Theory",
+      "so": "VST/donut-theory-arm32.so",
+      "source_repo": "Sunghyun23/kimswork",
+      "uid": "4b72716c",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.14.2",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "eeab4bc62577ba486da9a2f94892f5f229425f7a12dbf3c2d6e7a3d8b03429d7",
+     "size": 5853833,
+     "url": "https://github.com/Sunghyun23/kimswork/releases/download/donut-theory/v1.14.2/donut-theory-1.14.2-mpc-armv7.zip",
+     "version": "1.14.2",
+     "vst2": {
+      "folder": "kim - VST - Donut Theory"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-16",
+   "author": "Yann",
+   "bar_missing": [
+    "cpu-bench",
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 524,
+   "featured": false,
+   "id": "jamiro",
+   "kind": "instrument",
+   "latest": "1.0.4",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "Jamiro",
+   "repo": "Yan-1977/jamiro-mpc",
+   "source_available": false,
+   "style": "synth",
+   "summary": "Novation X-Station-style polysynth (KS engine): 8 voices, 3 oscillators with sync, FM and ring mod, multimode filter, 2 envelopes, 2 LFOs, arpeggiator and effects. Loads your own X-Station/KS .syx banks from Content/Banks. Independent project, not affiliated with Novation.",
+   "tags": [
+    "virtual-analog",
+    "polysynth",
+    "arpeggiator",
+    "x-station"
+   ],
+   "tier": "listed",
+   "updated": "2026-11-19",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "8ac386938737ec3d1b73b23cfe0b2f0adf9855f0f06fcd35652a9759786e5927",
+       "size": 656081,
+       "url": "https://github.com/Yan-1977/jamiro-mpc/releases/download/jamiro-v1.0.4/Jamiro-1.0.4-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "4d99adf557406b5e78149097f8eb2246d65b91957b6d3948402428ca68f3a772",
+       "size": 649460,
+       "url": "https://github.com/Yan-1977/jamiro-mpc/releases/download/jamiro-v1.0.4/Jamiro-1.0.4-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "3894e9c581b59c82cd43a8b6c7b1da79ed7495c46c12c9de9184d9bf9c7bd45f",
+       "size": 776417,
+       "url": "https://github.com/Yan-1977/jamiro-mpc/releases/download/jamiro-v1.0.4/Jamiro-1.0.4-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Novation X-Station-style polysynth (KS engine): 3 oscillators, filter, 2 envelopes, 2 LFOs, arpeggiator, effects; loads your X-Station .syx banks.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/Yann - VST - Jamiro",
+      "id": "jamiro",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "Yann",
+      "max_glibc": "2.29",
+      "name": "Jamiro",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "Yann - VST - Jamiro",
+      "so": "VST/jamiro-arm32.so",
+      "source_repo": "Yan-1977/jamiro-mpc",
+      "uid": "59415570",
+      "user_data": [
+       "Content/Banks"
+      ],
+      "user_files": [],
+      "version": "1.0.4",
+      "vst2": true
+     },
+     "max_glibc": "2.29",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "4d99adf557406b5e78149097f8eb2246d65b91957b6d3948402428ca68f3a772",
+     "size": 649460,
+     "url": "https://github.com/Yan-1977/jamiro-mpc/releases/download/jamiro-v1.0.4/Jamiro-1.0.4-mpc-armv7.zip",
+     "version": "1.0.4",
+     "vst2": {
+      "folder": "Yann - VST - Jamiro"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-15",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 821,
+   "featured": false,
+   "id": "potential1200",
+   "kind": "instrument",
+   "latest": "1.1.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "Potential1200",
+   "repo": "PotentialBreakfast/mpc-vst-potential1200",
+   "source_available": false,
+   "style": "sampler",
+   "summary": "12-bit drum sampler in the late-80s style: 8 faders and 8 pads, one-shots from your folders or a break cut to 2 bars from a kick on the 1, taken at 26 kHz into 12 bits with drop-sample pitch, the 45 > 33 trick, the classic per-pad filters and MULTI PITCH. Saves an MPC drum program. Four looks, its own Vintage look first.",
+   "tags": [
+    "sampler",
+    "12-bit",
+    "lo-fi",
+    "drums",
+    "breaks",
+    "vintage"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "404d98d3cf57ba2853ddede09dc692c7e4c98a2d954b019eabd9928c07888e1d",
+       "size": 9837325,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potential1200/releases/download/v1.1.0/Potential1200-1.1.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "5e72220a32580920f715d43dc3c7e9642545f971514575a4a451fc8b917c49fb",
+       "size": 9846428,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potential1200/releases/download/v1.1.0/Potential1200-1.1.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "b19d77c3a0cff73a290120646d590b77611cec334e7deeb59034dc284a238ad8",
+       "size": 9925569,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potential1200/releases/download/v1.1.0/Potential1200-1.1.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 10.7,
+      "p99_pct": 7.4,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "12-bit SP-1200-style drum sampler: one-shots or a chopped break on 8 faders and 8 pads, with drop-sample pitch, the 45 trick and the classic filters.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 10.7,
+       "p99_pct": 7.4,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - Potential1200",
+      "id": "potential1200",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "Potential1200",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - Potential1200",
+      "so": "potential1200.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potential1200",
+      "uid": "50623132",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.1.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "5e72220a32580920f715d43dc3c7e9642545f971514575a4a451fc8b917c49fb",
+     "size": 9846428,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potential1200/releases/download/v1.1.0/Potential1200-1.1.0-mpc-armv7.zip",
+     "version": "1.1.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - Potential1200"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-14",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 908,
+   "featured": false,
+   "id": "potentialbleed",
+   "kind": "effect",
+   "latest": "1.3.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialBleed",
+   "repo": "PotentialBreakfast/mpc-vst-potentialbleed",
+   "source_available": false,
+   "style": "resonator",
+   "summary": "Ghost bleed: hears each hit and adds quiet synthetic residue behind it (snare wires, cabinet, piano board, tines and more), so chops sound like a real recording.",
+   "tags": [
+    "lo-fi",
+    "texture",
+    "ghost-notes"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "5acf9d8280a3fdbe83fb393735814f4d0c856a8a19e344fd410f1e752adda04a",
+       "size": 14921469,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbleed/releases/download/v1.3.0/PotentialBleed-1.3.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "f73626cb9ae2e9d8a21e9c0e519ce950f94f1f21e1a035667603ccaf5cec2472",
+       "size": 14927817,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbleed/releases/download/v1.3.0/PotentialBleed-1.3.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "3aef3b0f2f459cd16989b6d96acb66806f5e196d2e35411ac53ab97dd42804dd",
+       "size": 14899382,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbleed/releases/download/v1.3.0/PotentialBleed-1.3.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 4.8,
+      "p99_pct": 3.2,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Ghost bleed: hears each hit and adds quiet synthetic residue (wires, cabinet, soundboard, tines and more) so chops sound like a real record.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 4.8,
+       "p99_pct": 3.2,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialBleed",
+      "id": "potentialbleed",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "PotentialBleed",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialBleed",
+      "so": "potentialbleed.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialbleed",
+      "uid": "5062426c",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.3.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "f73626cb9ae2e9d8a21e9c0e519ce950f94f1f21e1a035667603ccaf5cec2472",
+     "size": 14927817,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbleed/releases/download/v1.3.0/PotentialBleed-1.3.0-mpc-armv7.zip",
+     "version": "1.3.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialBleed"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-12",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 2945,
+   "featured": false,
+   "id": "potentialbreaks",
+   "kind": "instrument",
+   "latest": "1.9.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialBreaks",
+   "repo": "PotentialBreakfast/mpc-vst-potentialbreaks",
+   "source_available": false,
+   "style": "sampler",
+   "summary": "Drum-break slicer: picks a random break from your own break folders (WAV or FLAC), chops it to 8 or 16 slices or by hits across the pads and matches it to the project tempo, by re-pitching or stretching. Shuffle the slices and save the groove as MIDI.",
+   "tags": [
+    "breaks",
+    "slicer",
+    "drums",
+    "chop"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "57f30786c55b210810f7ad2cf7a43423e72f0991bf37f16a37b8a8a0f4b1d5b4",
+       "size": 7260118,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbreaks/releases/download/v1.9.0/PotentialBreaks-1.9.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "dc91a42ab2c2787bf5e815a3ca2394b1507ff2d4f3a1797d1509238d44f83fac",
+       "size": 7266556,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbreaks/releases/download/v1.9.0/PotentialBreaks-1.9.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "1da56bfaf3c8092025868eb4776b0a2bc319cfb6e2f02ba8b1d82edbbf5a70ee",
+       "size": 7368012,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbreaks/releases/download/v1.9.0/PotentialBreaks-1.9.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 2.7,
+      "p99_pct": 1.5,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Drum-break slicer: a random break from your library on 16 pads, chopped and tempo-matched.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 2.7,
+       "p99_pct": 1.5,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialBreaks",
+      "id": "potentialbreaks",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "PotentialBreaks",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialBreaks",
+      "so": "potentialbreaks.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialbreaks",
+      "uid": "5062426b",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.9.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "dc91a42ab2c2787bf5e815a3ca2394b1507ff2d4f3a1797d1509238d44f83fac",
+     "size": 7266556,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialbreaks/releases/download/v1.9.0/PotentialBreaks-1.9.0-mpc-armv7.zip",
+     "version": "1.9.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialBreaks"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-13",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 1438,
+   "featured": false,
+   "id": "potentialcrates",
+   "kind": "instrument",
+   "latest": "1.4.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialCrates",
+   "repo": "PotentialBreakfast/mpc-vst-potentialcrates",
+   "source_available": false,
+   "style": "sample-browser",
+   "summary": "Record digger: one-tap crates (Drum Breaks, Library, Soundtracks, ...) and ROLL dice dig Discogs and stream a record into your track to sample. A PotentialSuite fork of Crate Digger.",
+   "tags": [
+    "crate-digging",
+    "discogs",
+    "youtube",
+    "sampling"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "c85807f0818ae4531506d3e55c00c1ac5380a114b81aa9a2306cbc7fd40e4fd3",
+       "size": 90314579,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialcrates/releases/download/v1.4.0/PotentialCrates-1.4.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "74c4d2069702b65e91ffa9f70185560a385c5e7f39aac1df2fefe307dc6afcaa",
+       "size": 73887851,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialcrates/releases/download/v1.4.0/PotentialCrates-1.4.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "356619e2cdc1cfcc36c8c4c4c1df4f50784fc77df1a763630675dd4752ba599b",
+       "size": 73596739,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialcrates/releases/download/v1.4.0/PotentialCrates-1.4.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 5.1,
+      "p99_pct": 1.2,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Record digger: one-tap crates and ROLL dice find records on Discogs and play them into your MPC track.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 5.1,
+       "p99_pct": 1.2,
+       "verdict": "PASS"
+      },
+      "extras": [
+       "Content"
+      ],
+      "folder": "portable/PotentialBreaks - VST - PotentialCrates",
+      "id": "potentialcrates",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.29",
+      "name": "PotentialCrates",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "A network connection (searches Discogs and streams from the web)",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialCrates",
+      "so": "potentialcrates.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialcrates",
+      "uid": "50624372",
+      "user_data": [
+       "channels.txt"
+      ],
+      "user_files": [],
+      "version": "1.4.0",
+      "vst2": true
+     },
+     "max_glibc": "2.29",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "A network connection (searches Discogs and streams from the web)",
+     "sha256": "74c4d2069702b65e91ffa9f70185560a385c5e7f39aac1df2fefe307dc6afcaa",
+     "size": 73887851,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialcrates/releases/download/v1.4.0/PotentialCrates-1.4.0-mpc-armv7.zip",
+     "version": "1.4.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialCrates"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-14",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 1045,
+   "featured": false,
+   "id": "potentialgrit",
+   "kind": "effect",
+   "latest": "1.3.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialGrit",
+   "repo": "PotentialBreakfast/mpc-vst-potentialgrit",
+   "source_available": false,
+   "style": "multi-fx",
+   "summary": "Seven lo-fi effects on pads, one at a time: dust (glue, hiss, wobble), crush, resonant filter, three-band kill EQ, tempo echo, chop gate and ring mod, each with its own settings.",
+   "tags": [
+    "lo-fi",
+    "bitcrusher",
+    "filter",
+    "delay",
+    "ring-mod"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "c8d8316b8b58b6ce73c2531525bbd6a0d41aa1cb6be4c16b16950e3c5adaf420",
+       "size": 22051495,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialgrit/releases/download/v1.3.0/PotentialGrit-1.3.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "3b6a215f88cbb15d61ba64f0d484e9f4f17c25fc0ec8bdac6aff58e40f01cc25",
+       "size": 22056831,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialgrit/releases/download/v1.3.0/PotentialGrit-1.3.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "f07710d5117dbdb7762df6ca0771402b97a8d4861fa6a1ab0add3d86740fef99",
+       "size": 22015283,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialgrit/releases/download/v1.3.0/PotentialGrit-1.3.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 4.0,
+      "p99_pct": 3.0,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Lo-fi multi-effect: seven effects on pads (dust, crush, filter, kill EQ, tempo echo, chop, ring mod), one tap to switch.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 4.0,
+       "p99_pct": 3.0,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialGrit",
+      "id": "potentialgrit",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "PotentialGrit",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialGrit",
+      "so": "potentialgrit.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialgrit",
+      "uid": "50624772",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.3.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "3b6a215f88cbb15d61ba64f0d484e9f4f17c25fc0ec8bdac6aff58e40f01cc25",
+     "size": 22056831,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialgrit/releases/download/v1.3.0/PotentialGrit-1.3.0-mpc-armv7.zip",
+     "version": "1.3.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialGrit"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-14",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 718,
+   "featured": false,
+   "id": "potentialkits",
+   "kind": "instrument",
+   "latest": "1.3.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialKits",
+   "repo": "PotentialBreakfast/mpc-vst-potentialkits",
+   "source_available": false,
+   "style": "sampler",
+   "summary": "Random drum-kit builder: 16 sounds from your own sample folders, one-tap KIT STYLES and ROLL dice, pitch, decay and choke per pad, USER kits, exported as an MPC drum program. A PotentialSuite fork of Lucky Dip.",
+   "tags": [
+    "sampler",
+    "kit-builder",
+    "random",
+    "drum-kit"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "007af66e0b677903825d19405cd88c2a6303621cec18edee204622315be3713c",
+       "size": 7904591,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialkits/releases/download/v1.3.0/PotentialKits-1.3.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "060198ff7c18d1646078d5a352b3b8c9289a0231ddcf2ad00a7d2093c32af186",
+       "size": 7904248,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialkits/releases/download/v1.3.0/PotentialKits-1.3.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "686956e716a04181c3726e5c7f7efd2a454c7c219222f5dc2d4321dccc57099d",
+       "size": 8215898,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialkits/releases/download/v1.3.0/PotentialKits-1.3.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 5.5,
+      "p99_pct": 2.7,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Random drum-kit builder: 16 sounds from your own sample folders, KIT STYLES and ROLL, pitch, decay and choke, saved as an MPC drum program.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 5.5,
+       "p99_pct": 2.7,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialKits",
+      "id": "potentialkits",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.29",
+      "name": "PotentialKits",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialKits",
+      "so": "potentialkits.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialkits",
+      "uid": "50624b74",
+      "user_data": [
+       "data"
+      ],
+      "user_files": [],
+      "version": "1.3.0",
+      "vst2": true
+     },
+     "max_glibc": "2.29",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "060198ff7c18d1646078d5a352b3b8c9289a0231ddcf2ad00a7d2093c32af186",
+     "size": 7904248,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialkits/releases/download/v1.3.0/PotentialKits-1.3.0-mpc-armv7.zip",
+     "version": "1.3.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialKits"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-06",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 1978,
+   "featured": false,
+   "id": "potentialnoise",
+   "kind": "instrument",
+   "latest": "2.6.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialNoise",
+   "repo": "PotentialBreakfast/mpc-vst-potentialnoise",
+   "source_available": false,
+   "style": "utility",
+   "summary": "Calibrated pink noise reference for the pink-noise mixing method: one-tap RMS levels from -24 to -12 dB, mono or stereo, full or 40 Hz-16 kHz range, live RMS and peak reading and a level meter.",
+   "tags": [
+    "pink-noise",
+    "mixing",
+    "reference",
+    "meter"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "82d7f9836f3f8044e2362ef7fd43370c406b948d94f6275e7377b66d6d6d4152",
+       "size": 3767039,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialnoise/releases/download/v2.6.0/PotentialNoise-2.6.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "c1c47b55d081bde20aefb019ad472d7211eae32fe5dd953248fea588bdbe3c19",
+       "size": 3775014,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialnoise/releases/download/v2.6.0/PotentialNoise-2.6.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "56173477ef3c9ae95f5b975c5008d595e6c273572dbd218bd0f21958e7afb2e9",
+       "size": 3706611,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialnoise/releases/download/v2.6.0/PotentialNoise-2.6.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 2.0,
+      "p99_pct": 1.6,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Calibrated pink noise reference for mixing: one-tap RMS levels, mono/stereo, full or limited range, live meter.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 2.0,
+       "p99_pct": 1.6,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialNoise",
+      "id": "potentialnoise",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "PotentialNoise",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 2,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialNoise",
+      "so": "potentialnoise.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialnoise",
+      "uid": "50624e7a",
+      "user_data": [],
+      "user_files": [],
+      "version": "2.6.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 2,
+     "requires": "",
+     "sha256": "c1c47b55d081bde20aefb019ad472d7211eae32fe5dd953248fea588bdbe3c19",
+     "size": 3775014,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialnoise/releases/download/v2.6.0/PotentialNoise-2.6.0-mpc-armv7.zip",
+     "version": "2.6.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialNoise"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-13",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 2491,
+   "featured": false,
+   "id": "potentialpunch",
+   "kind": "effect",
+   "latest": "1.7.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialPunch",
+   "repo": "PotentialBreakfast/mpc-vst-potentialpunch",
+   "source_available": false,
+   "style": "compressor",
+   "summary": "Transient shaper: more or less punch at the start of every hit and more or less tail after it, level-independent with no threshold, speed and focus (full/lows/highs), soft clip, live meter and 12 one-tap presets for drums, breaks and more.",
+   "tags": [
+    "transient-shaper",
+    "drums",
+    "punch",
+    "breaks",
+    "dynamics"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "795a6fcce7dabd50ac1f9a03dbbfe87eb20d6f7657e6bad036b5ce334f08e08a",
+       "size": 9746316,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpunch/releases/download/v1.7.0/PotentialPunch-1.7.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "f3b677fc89d3448f9e9606f97067b85b8b09fdab0bfd0004ad74d6a6bf3e6574",
+       "size": 9747370,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpunch/releases/download/v1.7.0/PotentialPunch-1.7.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "72e9b4a0da5516c291bba12839b328aa9b95f6a6019f755a56a6399a5e6659a9",
+       "size": 9682670,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpunch/releases/download/v1.7.0/PotentialPunch-1.7.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 5.1,
+      "p99_pct": 3.0,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Transient shaper: more or less punch and tail on drums and anything else, with one-tap presets.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 5.1,
+       "p99_pct": 3.0,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialPunch",
+      "id": "potentialpunch",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "PotentialPunch",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialPunch",
+      "so": "potentialpunch.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialpunch",
+      "uid": "50625075",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.7.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "f3b677fc89d3448f9e9606f97067b85b8b09fdab0bfd0004ad74d6a6bf3e6574",
+     "size": 9747370,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpunch/releases/download/v1.7.0/PotentialPunch-1.7.0-mpc-armv7.zip",
+     "version": "1.7.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialPunch"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-13",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 1196,
+   "featured": false,
+   "id": "potentialwarp",
+   "kind": "effect",
+   "latest": "1.5.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialWarp",
+   "repo": "PotentialBreakfast/mpc-vst-potentialwarp",
+   "source_available": false,
+   "style": "glitch",
+   "summary": "Tempo-locked mangler: 16 patterns of half time, tape stop, stutter, reverse and gates, with swing, triplets, 4-bar patterns and a hold-a-pad mode.",
+   "tags": [
+    "stutter",
+    "tape-stop",
+    "gate",
+    "half-time",
+    "tempo-sync"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "3fecc8b781baf9ff83ae18be876ca52eeafbe61ac8956fb759f40a117f2c90dc",
+       "size": 10122458,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialwarp/releases/download/v1.5.0/PotentialWarp-1.5.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "0f6818aa2348aff1d117277e2217d9fdad6ec03f615deb60d3412b58d1e0aae8",
+       "size": 10127963,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialwarp/releases/download/v1.5.0/PotentialWarp-1.5.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "4d359f3f3dcd112fdbe10cd055251d48121b1a9895cf722b5090e4f702050485",
+       "size": 9826590,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialwarp/releases/download/v1.5.0/PotentialWarp-1.5.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 6.0,
+      "p99_pct": 4.3,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Tempo-locked mangler: stutters, half-speed, tape stops, reverses and gates in 16 one-tap patterns.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 6.0,
+       "p99_pct": 4.3,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialWarp",
+      "id": "potentialwarp",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.27",
+      "name": "PotentialWarp",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialWarp",
+      "so": "potentialwarp.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialwarp",
+      "uid": "50625770",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.5.0",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "0f6818aa2348aff1d117277e2217d9fdad6ec03f615deb60d3412b58d1e0aae8",
+     "size": 10127963,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialwarp/releases/download/v1.5.0/PotentialWarp-1.5.0-mpc-armv7.zip",
+     "version": "1.5.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialWarp"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-10-07",
+   "author": "sd88me",
+   "bar_missing": [
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 3639,
+   "featured": false,
+   "id": "tr-mpc",
+   "kind": "instrument",
+   "latest": "1.3.0",
+   "latest_beta": null,
+   "license": "GPL-3.0-only",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "TR-MPC",
+   "repo": "sd88me/mpc-vst-TR-MPC",
+   "source_available": false,
+   "style": "drum-machine",
+   "summary": "A modular 16-slot drum kit: each slot plays any of the 49 voices of athousanddetails' 6W6, 8W8, CW-78 and 9W9 (a 606 kick beside an 808 snare and 909 hats), with per-slot level, tune, decay, drive, pan and sends, one shared reverb, delay and master chain, a randomise module, and a touchscreen skin that reskins each slot to its voice's kit.",
+   "tags": [
+    "tr-606",
+    "tr-808",
+    "cr-78",
+    "tr-909",
+    "modular"
+   ],
+   "tier": "listed",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-19",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "9ba87aa7f644c8b30b027b8f833a003744f3417acd42f3d2d7c1005e48aaf16b",
+       "size": 83673676,
+       "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-vst-v1.3.0/TR-MPC-1.3.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "92b4ae981cb17210d71fdea391cffc872c7855c59432592fc1f9d60d9c615482",
+       "size": 82970114,
+       "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-vst-v1.3.0/TR-MPC-1.3.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "d1ef12faffa31301686d49c9ca29726a33751046123330689fdac6b5a16138a4",
+       "size": 83747153,
+       "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-vst-v1.3.0/TR-MPC-1.3.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 27.4,
+      "p99_pct": 24.8,
+      "verdict": "WARN"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Modular 16-slot drum kit, any voice of 6W6, 8W8, CW-78 and 9W9 per slot, with one shared reverb, delay and master chain, user presets and 23 factory ones. On Gen2 the 808 and 909 are the circuit-solved 8X8 and 9X9 (Lemus, AGPL); Gen1 keeps the 8W8 and 9W9 voices (GPL). Built on athousanddetails' Schwung drum machines.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 27.4,
+       "p99_pct": 24.8,
+       "verdict": "WARN"
+      },
+      "extras": [
+       "engine/samples",
+       "engine/roms/README.txt"
+      ],
+      "folder": "portable/sd88me - VST - TR-MPC",
+      "id": "tr-mpc",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "GPL-3.0-only AND AGPL-3.0-only",
+      "manufacturer": "sd88me",
+      "max_glibc": "2.29",
+      "name": "TR-MPC",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "sd88me - VST - TR-MPC",
+      "so": "trmpc.so",
+      "source_repo": "sd88me/mpc-vst-TR-MPC",
+      "uid": "54524d50",
+      "user_data": [
+       "engine/roms",
+       "engine/user"
+      ],
+      "user_files": [],
+      "version": "1.3.0",
+      "vst2": true
+     },
+     "max_glibc": "2.29",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "92b4ae981cb17210d71fdea391cffc872c7855c59432592fc1f9d60d9c615482",
+     "size": 82970114,
+     "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-vst-v1.3.0/TR-MPC-1.3.0-mpc-armv7.zip",
+     "version": "1.3.0",
+     "vst2": {
+      "folder": "sd88me - VST - TR-MPC"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-10-07",
+   "author": "sd88me",
+   "bar_missing": [
+    "cpu-bench",
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 2475,
+   "featured": false,
+   "id": "tr-mpc-tap-fx",
+   "kind": "effect",
+   "latest": "1.3.0",
+   "latest_beta": null,
+   "license": "GPL-3.0-only",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "TR-MPC Tap FX",
+   "repo": "sd88me/mpc-vst-TR-MPC",
+   "source_available": false,
+   "style": "utility",
+   "summary": "Companion to TR-MPC: sends any slot, or the kit's reverb or delay send, out on its own MPC track, sample-aligned with the kit, so MPC's mixer, submixes and insert effects can process it. Needs TR-MPC in the same project.",
+   "tags": [
+    "routing",
+    "multi-out",
+    "drum"
+   ],
+   "tier": "listed",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-19",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "cbdcbaae0be62ba61624de9ee29ad04d6d6b7d5f6330d1484c54f3183b8a4a31",
+       "size": 531933,
+       "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-tap-fx-vst-v1.3.0/TR-MPC-Tap-FX-1.3.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "67bab1b15ead645f047d1f17e683c5eac27ef0678d9d640c6ef88ef6cf916789",
+       "size": 528891,
+       "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-tap-fx-vst-v1.3.0/TR-MPC-Tap-FX-1.3.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "abb5abdf19864fc8bb9e89e1afbdb65d924f4f96d1b3d94cc38ab477ad7bc0fd",
+       "size": 527208,
+       "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-tap-fx-vst-v1.3.0/TR-MPC-Tap-FX-1.3.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [
+      {
+       "id": "tr-mpc",
+       "pick": {
+        "aarch64": "1.3.0",
+        "armv7": "1.3.0"
+       },
+       "rules": []
+      }
+     ],
+     "gen2": true,
+     "manifest": {
+      "about": "TR-MPC Tap FX - sends any TR-MPC slot, or its reverb or delay send, out on its own MPC track so MPC's mixer, submixes and effects can process it.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/sd88me - VST - TR-MPC Tap FX",
+      "id": "tr-mpc-tap-fx",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "GPL-3.0-only",
+      "manufacturer": "sd88me",
+      "max_glibc": "2.17",
+      "name": "TR-MPC Tap FX",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "TR-MPC (same version) in the same project",
+      "retire": [],
+      "schema": 1,
+      "skin": "sd88me - VST - TR-MPC Tap FX",
+      "so": "trmpc_tapfx.so",
+      "source_repo": "sd88me/mpc-vst-TR-MPC",
+      "uid": "54525466",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.3.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "TR-MPC (same version) in the same project",
+     "sha256": "67bab1b15ead645f047d1f17e683c5eac27ef0678d9d640c6ef88ef6cf916789",
+     "size": 528891,
+     "url": "https://github.com/sd88me/mpc-vst-TR-MPC/releases/download/trmpc-tap-fx-vst-v1.3.0/TR-MPC-Tap-FX-1.3.0-mpc-armv7.zip",
+     "version": "1.3.0",
+     "vst2": {
+      "folder": "sd88me - VST - TR-MPC Tap FX"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-14",
+   "author": "anthonytheinventor",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 1373,
+   "featured": false,
+   "id": "vhs-vibes",
+   "kind": "effect",
+   "latest": "1.7.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "VHS Vibes",
+   "repo": "anthonytheinventor/vhs-vibes",
+   "source_available": false,
+   "style": "tape",
+   "summary": "A worn video-tape effect: pitch wobble, tape saturation, generation loss, B-type noise reduction, hum, hiss and crackle, plus deck faults (level control, drift, tracking drop-outs) and a dry/wet mix. 34 programs, on a hot pink cassette with reels that turn.",
+   "tags": [
+    "tape",
+    "lo-fi",
+    "saturation",
+    "modulation",
+    "noise"
+   ],
+   "tier": "verified",
+   "tip": "https://ko-fi.com/anthonytheinventor",
+   "updated": "2026-11-19",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "e2c7a53cce919684cdbf11b47f587407c20ea97a4e0d19bfea40531e9bd0f8c8",
+       "size": 10368171,
+       "url": "https://github.com/anthonytheinventor/vhs-vibes/releases/download/v1.7.0/VHS-Vibes-1.7.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "82c56f6a2e75002edf58bed54769d5ba57eb00bbc701839b72edf08889d44b7a",
+       "size": 10379437,
+       "url": "https://github.com/anthonytheinventor/vhs-vibes/releases/download/v1.7.0/VHS-Vibes-1.7.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "0377b5af5a7750547397e11dffa815a27de6206b9ca55dddbaea79a7cb20ca59",
+       "size": 10508461,
+       "url": "https://github.com/anthonytheinventor/vhs-vibes/releases/download/v1.7.0/VHS-Vibes-1.7.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 13.6,
+      "p99_pct": 8.7,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "VHS Vibes: a VHS tape degradation effect (pitch wobble, saturation, generation loss, hum, hiss and crackle) for the MPC.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 13.6,
+       "p99_pct": 8.7,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/anthonytheinventor - VST - VHS Vibes",
+      "id": "vhs-vibes",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "anthonytheinventor",
+      "max_glibc": "2.30",
+      "name": "VHS Vibes",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "anthonytheinventor - VST - VHS Vibes",
+      "so": "VST/vhs-vibes-arm32.so",
+      "source_repo": "anthonytheinventor/vhs-vibes",
+      "uid": "41596c4d",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.7.0",
+      "vst2": true
+     },
+     "max_glibc": "2.30",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "82c56f6a2e75002edf58bed54769d5ba57eb00bbc701839b72edf08889d44b7a",
+     "size": 10379437,
+     "url": "https://github.com/anthonytheinventor/vhs-vibes/releases/download/v1.7.0/VHS-Vibes-1.7.0-mpc-armv7.zip",
+     "version": "1.7.0",
+     "vst2": {
+      "folder": "anthonytheinventor - VST - VHS Vibes"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-19",
+   "author": "Lumina Aerospace LLC",
+   "bar_missing": [
+    "cpu-bench",
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 50,
+   "featured": false,
+   "id": "vulcan-rotary",
+   "kind": "effect",
+   "latest": "1.0.1",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 1,
+    "unanswered": 0
+   },
+   "name": "Vulcan Rotary",
+   "repo": "Luminous-Works/mpc-vst-vulcan-rotary",
+   "source_available": false,
+   "style": "glitch",
+   "summary": "Six-barrel rotary gate and stutter: the barrels spool up from rest, rates in real gun rounds per minute (2,500 / 4,000 / 6,000 / 7,200).",
+   "tags": [
+    "gate",
+    "stutter",
+    "rotary",
+    "rhythm",
+    "scatter"
+   ],
+   "tier": "listed",
+   "updated": "2026-11-19",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "716ff6746ad424953d99be8940c3239988c6ade79c04879de3fa0ecfc425c12c",
+       "size": 3474317,
+       "url": "https://github.com/Luminous-Works/mpc-vst-vulcan-rotary/releases/download/v1.0.1/Vulcan-Rotary-1.0.1-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "099966ec934e667c0fadad0b1fe218c52c0ea3fdd1351c830c49a0f5304784d1",
+       "size": 3468510,
+       "url": "https://github.com/Luminous-Works/mpc-vst-vulcan-rotary/releases/download/v1.0.1/Vulcan-Rotary-1.0.1-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-19",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Vulcan Rotary: a six-barrel rotary gate and stutter. Free, signal-powered or trigger-fired, with spool-up and wind-down, scatter, per-barrel tone and a muzzle report. Hangar mate to F4 Phantom. Lumina Aerospace LLC.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/Lumina Aerospace LLC - VST - Vulcan Rotary",
+      "id": "vulcan-rotary",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "Lumina Aerospace LLC",
+      "max_glibc": "2.27",
+      "name": "Vulcan Rotary",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "Lumina Aerospace LLC - VST - Vulcan Rotary",
+      "so": "VST/vulcan-rotary-arm32.so",
+      "source_repo": "Luminous-Works/mpc-vst-vulcan-rotary",
+      "uid": "4c677977",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.0.1",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "099966ec934e667c0fadad0b1fe218c52c0ea3fdd1351c830c49a0f5304784d1",
+     "size": 3468510,
+     "url": "https://github.com/Luminous-Works/mpc-vst-vulcan-rotary/releases/download/v1.0.1/Vulcan-Rotary-1.0.1-mpc-armv7.zip",
+     "version": "1.0.1",
+     "vst2": {
+      "folder": "Lumina Aerospace LLC - VST - Vulcan Rotary"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-09-29",
+   "author": "sd88me",
+   "bar_missing": [
+    "cpu-bench",
+    "tested"
+   ],
+   "distribution": "release",
+   "downloads": 13003,
+   "featured": false,
+   "id": "dexed-dx7",
+   "kind": "instrument",
+   "latest": "2.0.5",
+   "latest_beta": null,
+   "license": "GPL-3.0-only",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 1,
+    "unanswered": 0
+   },
+   "name": "Dexed",
+   "repo": "sd88me/mpc-vst-dx7",
+   "source_available": false,
+   "style": "fm-synth",
+   "summary": "DX7-style 6-operator FM synth (Dexed/MSFA engine) as a native instrument, with .syx bank browsing, all 32 algorithm diagrams and a touchscreen skin with Q-Links.",
+   "tags": [
+    "dx7",
+    "emulation"
+   ],
+   "tier": "verified",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen2"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "634f90a8b31dd0924e31099c54e90d3ae433789f1d0be0973bb8b432ee2c33da",
+       "size": 7498052,
+       "url": "https://github.com/sd88me/mpc-vst-dx7/releases/download/dx7-v2.0.5/Dexed-DX7-2.0.5-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "f4290bdb5298e6e4b65ab16480ab549db821343c655dd68e9a3091fe145e39e0",
+       "size": 7485536,
+       "url": "https://github.com/sd88me/mpc-vst-dx7/releases/download/dx7-v2.0.5/Dexed-DX7-2.0.5-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "77cfc9e07e10a9a8cf1f4afb679f39c657a563a293087921bd7ba797d5467ddf",
+       "size": 7622700,
+       "url": "https://github.com/sd88me/mpc-vst-dx7/releases/download/dx7-v2.0.5/Dexed-DX7-2.0.5-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "6-operator FM synthesis (Dexed/MSFA via schwung-dx7), with the DX7-editor LCD touchscreen skin ported from force-dx7.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [
+       "dx7_carts"
+      ],
+      "folder": "portable/sd88me - VST - Dexed (DX7)",
+      "id": "dexed-dx7",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "GPL-3.0-only",
+      "manufacturer": "sd88me",
+      "max_glibc": "2.27",
+      "name": "Dexed (DX7)",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 2,
+      "requires": "MPC OS standalone (Force/Live/One/X/Key) with root SSH access; 44.1 kHz",
+      "retire": [],
+      "schema": 1,
+      "skin": "sd88me - VST - Dexed (DX7)",
+      "so": "dx7_dexed.so",
+      "source_repo": "sd88me/mpc-vst-dx7",
+      "uid": "46445832",
+      "user_data": [
+       "dx7_carts",
+       "favourites.dat"
+      ],
+      "user_files": [
+       {
+        "description": "Your own DX7 cart files. Each .syx appears in the cart list on the CARTS page and on the LCD.",
+        "hint": "A single 32-voice bank is 4104 bytes; a ROM dump of several banks is any whole multiple of 4104 bytes. After uploading, tap RESCAN on the CARTS page.",
+        "label": "DX7 carts (.syx)",
+        "path": "dx7_carts",
+        "rules": [
+         {
+          "ext": [
+           ".syx"
+          ],
+          "label": "DX7 32-voice bank / multi-bank cart",
+          "note": "Looks like a cart; the plugin checks that the size is a whole number of 4104-byte banks.",
+          "size_max": 1050624,
+          "size_min": 4104,
+          "unverified": true
+         }
+        ]
+       }
+      ],
+      "version": "2.0.5",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 2,
+     "requires": "MPC OS standalone (Force/Live/One/X/Key) with root SSH access; 44.1 kHz",
+     "sha256": "f4290bdb5298e6e4b65ab16480ab549db821343c655dd68e9a3091fe145e39e0",
+     "size": 7485536,
+     "url": "https://github.com/sd88me/mpc-vst-dx7/releases/download/dx7-v2.0.5/Dexed-DX7-2.0.5-mpc-armv7.zip",
+     "version": "2.0.5",
+     "vst2": {
+      "folder": "sd88me - VST - Dexed (DX7)"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-18",
+   "author": "Lumina Aerospace LLC",
+   "bar_missing": [
+    "cpu-bench",
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 244,
+   "featured": false,
+   "id": "f4-phantom",
+   "kind": "instrument",
+   "latest": "1.2.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 1,
+    "unanswered": 0
+   },
+   "name": "F4 Phantom",
+   "repo": "Luminous-Works/mpc-vst-f4-phantom",
+   "source_available": false,
+   "style": "synth",
+   "summary": "8-voice subtractive synth: two oscillators plus sub, SVF filter, drift, stereo chorus and a six-barrel rotary gate. 14 sounds.",
+   "tags": [
+    "subtractive",
+    "polyphonic",
+    "analog",
+    "chorus",
+    "rotary"
+   ],
+   "tier": "listed",
+   "updated": "2026-11-18",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "075c1204ff65993d5d80a9a85677baf49ac8cd092d8097dfb6458566c2c8f0e0",
+       "size": 2024545,
+       "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/f4-phantom-1.2.0-763286342-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "e05abf3c7766ad2318de71253f294f54529b54b7b29d159b4dd1cd54bf6d0c3a",
+       "size": 2023929,
+       "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/f4-phantom-1.2.0-763286342-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "F4 Phantom: 8-voice subtractive synthesizer. Two PolyBLEP oscillators plus a sub, SVF filter, dual ADSRs, tempo-syncable LFO, glide, analog drift, a stereo chorus, a tempo-syncable delay and a plate reverb. 146 factory sounds in 22 genres. Lumina Aerospace LLC.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/Lumina Aerospace LLC - VST - F4 Phantom",
+      "id": "f4-phantom",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "Lumina Aerospace LLC",
+      "max_glibc": "2.29",
+      "name": "F4 Phantom",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "Lumina Aerospace LLC - VST - F4 Phantom",
+      "so": "VST/f4-phantom-arm32.so",
+      "source_repo": "Luminous-Works/mpc-vst-f4-phantom",
+      "uid": "46345048",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.2.0",
+      "vst2": true
+     },
+     "max_glibc": "2.29",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "e05abf3c7766ad2318de71253f294f54529b54b7b29d159b4dd1cd54bf6d0c3a",
+     "size": 2023929,
+     "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/f4-phantom-1.2.0-763286342-mpc-armv7.zip",
+     "version": "1.2.0",
+     "vst2": {
+      "folder": "Lumina Aerospace LLC - VST - F4 Phantom"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-18",
+   "author": "Lightlike",
+   "bar_missing": [
+    "cpu-bench",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 138,
+   "featured": false,
+   "id": "lx-800",
+   "kind": "instrument",
+   "latest": "1.1.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "LX-800",
+   "repo": "lightlikemusic/lx-800",
+   "source_available": false,
+   "style": "synth",
+   "summary": "An 8-voice paraphonic synth in the spirit of early-80s budget polysynths: divide-down staircase oscillators, one shared resonant 24/12 dB filter with its own envelope, six-stage rate envelopes, delayed LFO, stereo chorus and a chord step sequencer synced to the MPC. 63 presets and a programmer-chart screen with live LED readouts.",
+   "tags": [
+    "paraphonic",
+    "polysynth",
+    "vintage",
+    "analog-modelling",
+    "chorus",
+    "step-sequencer"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "a8922d42e721367c5cd5ee4185caf303ee19f85b30f3e6df3a5e578a8a32a3bc",
+       "size": 1147530,
+       "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/lx-800-1.1.0-765462063-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "681125d66e0c8f47057921ceda8dd0f516f61bfe223cc11e8709ac8f66d4c4d3",
+       "size": 1137382,
+       "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/lx-800-1.1.0-765462063-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "1140b29205dde09cb55fbe1c8173179207e2ddd51ef74ff65d1cf377ba8b2dfe",
+       "size": 1239984,
+       "url": "https://github.com/lightlikemusic/lx-800/releases/download/v1.1.0/LX-800-1.1.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "LX-800: an 8-voice paraphonic synth with staircase-wave digital oscillators, one shared resonant ladder filter, six-stage envelopes, chorus and a chord step sequencer.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/Lightlike - VST - LX-800",
+      "id": "lx-800",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "Lightlike",
+      "max_glibc": "2.27",
+      "name": "LX-800",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "Lightlike - VST - LX-800",
+      "so": "VST/lx-800-arm32.so",
+      "source_repo": "lightlikemusic/lx-800",
+      "uid": "4c6f7141",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.1.0",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "681125d66e0c8f47057921ceda8dd0f516f61bfe223cc11e8709ac8f66d4c4d3",
+     "size": 1137382,
+     "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/lx-800-1.1.0-765462063-mpc-armv7.zip",
+     "version": "1.1.0",
+     "vst2": {
+      "folder": "Lightlike - VST - LX-800"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-10-15",
+   "author": "sd88me",
+   "bar_missing": [
+    "cpu-bench",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 3420,
+   "featured": false,
+   "id": "model-72",
+   "kind": "instrument",
+   "latest": "2.0.0",
+   "latest_beta": null,
+   "license": "GPL-3.0-or-later",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "Model-72",
+   "repo": "sd88me/mpc-vst-model72",
+   "source_available": false,
+   "style": "synth",
+   "summary": "A port of Idle Foundry's CA-72, a circuit-modelled 1970s Minimoog Model-D: three oscillators, the ladder filter and contours, mono, poly or unison with stereo and 19 presets. LO is the fitted light model; HI runs the circuit's own filter in real time.",
+   "tags": [
+    "analog",
+    "mono",
+    "bass",
+    "circuit-model",
+    "stereo",
+    "presets"
+   ],
+   "tier": "verified",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "be569efb7fc896cf0d18536a537eb136b374b8353dca79638d6d2f65a4c3bb33",
+       "size": 21058553,
+       "url": "https://github.com/sd88me/mpc-vst-model72/releases/download/model72-v2.0.0/Model-72-2.0.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "0ca5b238526d6acb9dd993babb266789dc40ab6b2587a4011c99c873be43dbec",
+       "size": 21040169,
+       "url": "https://github.com/sd88me/mpc-vst-model72/releases/download/model72-v2.0.0/Model-72-2.0.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "168c27f6541e58e48e4654e853ba09aa8b3c2618de33b546461dc9aef8176d21",
+       "size": 21495550,
+       "url": "https://github.com/sd88me/mpc-vst-model72/releases/download/model72-v2.0.0/Model-72-2.0.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "A circuit-modelled 1970s monosynth: CA-72's Minimoog Model D, LO (light) or HI (the circuit's own ladder filter), mono, poly or unison, with its own skin, user presets and Q-Links.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/sd88me - VST - Model-72",
+      "id": "model-72",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "GPL-3.0-or-later",
+      "manufacturer": "sd88me",
+      "max_glibc": "2.29",
+      "name": "Model-72",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 2,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "sd88me - VST - Model-72",
+      "so": "model72.so",
+      "source_repo": "sd88me/mpc-vst-model72",
+      "uid": "4d303732",
+      "user_data": [
+       "model72-presets.dat"
+      ],
+      "user_files": [],
+      "version": "2.0.0",
+      "vst2": true
+     },
+     "max_glibc": "2.29",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 2,
+     "requires": "",
+     "sha256": "0ca5b238526d6acb9dd993babb266789dc40ab6b2587a4011c99c873be43dbec",
+     "size": 21040169,
+     "url": "https://github.com/sd88me/mpc-vst-model72/releases/download/model72-v2.0.0/Model-72-2.0.0-mpc-armv7.zip",
+     "version": "2.0.0",
+     "vst2": {
+      "folder": "sd88me - VST - Model-72"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-18",
+   "author": "3dthc",
+   "bar_missing": [
+    "cpu-bench",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 214,
+   "featured": false,
+   "id": "mpc-midi-converter",
+   "kind": "instrument",
+   "latest": "1.0.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "MPC MIDI Converter",
+   "repo": "3dthc/MPC-MIDI-Converter",
+   "source_available": false,
+   "style": "utility",
+   "summary": "Converts MIDI files to MPC patterns right on the MPC, no computer needed. Browse your SD card and drives, convert one file or a whole pack with its subfolders, then load the patterns onto any track. Split tracks, map GM drums onto pads, quantize; each pattern's name carries the file's tempo. Gen1 (MPC OS 2.x and 3.x) and Gen2.",
+   "tags": [
+    "midi",
+    "converter",
+    "mpcpattern",
+    "file-browser",
+    "batch",
+    "drum-map"
+   ],
+   "tier": "verified",
+   "tip": "https://ko-fi.com/3dthc",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "4ee02d4141351df59f120a6fe32ff94f7c5e2dcf8116f608badecfe64957ccf0",
+       "size": 431968,
+       "url": "https://github.com/3dthc/MPC-MIDI-Converter/releases/download/v1.0.0/MPC-MIDI-Converter-1.0.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "865c8d0fd49d3361eceed4d4b56ea713909d27781a08b08ff46480ee177127cb",
+       "size": 429437,
+       "url": "https://github.com/3dthc/MPC-MIDI-Converter/releases/download/v1.0.0/MPC-MIDI-Converter-1.0.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "402ff90476f048d4b8033e87d42a55c12c881489376c6563bc88afd3969b7f59",
+       "size": 432443,
+       "url": "https://github.com/3dthc/MPC-MIDI-Converter/releases/download/v1.0.0/MPC-MIDI-Converter-1.0.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Converts MIDI files to MPC patterns on the MPC.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/3dthc - VST - MPC MIDI Converter",
+      "id": "mpc-midi-converter",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "3dthc",
+      "max_glibc": "2.17",
+      "name": "MPC MIDI Converter",
+      "os_compat": [
+       "2.x",
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "3dthc - VST - MPC MIDI Converter",
+      "so": "mpc_midi_converter.so",
+      "source_repo": "3dthc/MPC-MIDI-Converter",
+      "uid": "4d4d4376",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.0.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "2.x",
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "865c8d0fd49d3361eceed4d4b56ea713909d27781a08b08ff46480ee177127cb",
+     "size": 429437,
+     "url": "https://github.com/3dthc/MPC-MIDI-Converter/releases/download/v1.0.0/MPC-MIDI-Converter-1.0.0-mpc-armv7.zip",
+     "version": "1.0.0",
+     "vst2": {
+      "folder": "3dthc - VST - MPC MIDI Converter"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-18",
+   "author": "Steph",
+   "bar_missing": [
+    "cpu-bench",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 152,
+   "featured": false,
+   "id": "mpc-radio",
+   "kind": "effect",
+   "latest": "1.0.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "MPC Radio",
+   "repo": "Forge-Audio/mpc-radio",
+   "source_available": false,
+   "summary": "MPC Radio is a radio dial that plays live internet stations, with hiss, crackle, sliding whistles and half-heard ghosts between them and a perfectly clean signal once a station locks in.",
+   "tags": [],
+   "tier": "verified",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "36e2f28bbea1d1b24093cce978e6ca55938b49f54feec40299fb22452361472c",
+       "size": 2299305,
+       "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/mpc-radio-1.0.0-765134829-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "9b01ffeeb93c5c8b89c08890ecc682ac82bdea69d0108b3ab3f3648a81da0a88",
+       "size": 2291199,
+       "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/mpc-radio-1.0.0-765134829-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "12d541e6c6a75cddb283a28982b3dd6484318c543a4c86ff3ffb7e85249df731",
+       "size": 2424582,
+       "url": "https://github.com/Forge-Audio/mpc-radio/releases/download/v1.0.0/MPC-Radio-1.0.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "MPC Radio is a radio dial that plays live internet stations, with hiss, crackle, sliding whistles and half-heard ghosts between them and a perfectly clean signal once a station locks in.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/Steph - VST - MPC Radio",
+      "id": "mpc-radio",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "Steph",
+      "max_glibc": "2.28",
+      "name": "MPC Radio",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "Steph - VST - MPC Radio",
+      "so": "VST/mpc-radio-arm32.so",
+      "source_repo": "Forge-Audio/mpc-radio",
+      "uid": "534f6f33",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.0.0",
+      "vst2": true
+     },
+     "max_glibc": "2.28",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "9b01ffeeb93c5c8b89c08890ecc682ac82bdea69d0108b3ab3f3648a81da0a88",
+     "size": 2291199,
+     "url": "https://github.com/open-mpc/mpc-vst-plugins/releases/download/sdk-converted/mpc-radio-1.0.0-765134829-mpc-armv7.zip",
+     "version": "1.0.0",
+     "vst2": {
+      "folder": "Steph - VST - MPC Radio"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-12",
+   "author": "sd88me",
+   "bar_missing": [
+    "cpu-bench"
+   ],
+   "distribution": "release",
+   "downloads": 7526,
+   "featured": false,
+   "id": "plugin-manager-g2",
+   "kind": "instrument",
+   "latest": "1.3.5",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 3,
+    "unanswered": 0
+   },
+   "name": "Open MPC Plugin Manager",
+   "repo": "open-mpc/plugin-manager",
+   "source_available": false,
+   "style": "utility",
+   "summary": "The official OpenMPC plugin manager for Gen1 and Gen2 MPCs (32-bit build for Force, Live, One, X, Key; 64-bit for the Live III and kin). Browse this catalog and install, update and remove plugins on the MPC itself, with rollback if an install fails. Built on poloq's mpc-vst-manager.",
+   "tags": [
+    "installer",
+    "catalog",
+    "manager",
+    "gen1",
+    "gen2",
+    "utility"
+   ],
+   "tier": "verified",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1",
+    "gen2"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "10cb62b3874e9f8c3441e48454da7f119b2bbcb8b16a2d22f2d4d08f95d2825d",
+       "size": 31133039,
+       "url": "https://github.com/open-mpc/plugin-manager/releases/download/plugin-manager-g2-v1.3.5/Plugin-Manager-G2-1.3.5-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "9c2715178f8cfec0ffebe78ebcef6c3e4a31d6d94a18aef483cd3c44d6d30cd2",
+       "size": 31102666,
+       "url": "https://github.com/open-mpc/plugin-manager/releases/download/plugin-manager-g2-v1.3.5/Plugin-Manager-G2-1.3.5-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "ad1ad54685ad92e42f935230a606bf40c1b3c0f3d279917160486194f3a26b2d",
+       "size": 30912899,
+       "url": "https://github.com/open-mpc/plugin-manager/releases/download/plugin-manager-g2-v1.3.5/Plugin-Manager-G2-1.3.5-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Browse the OpenMPC catalog and install, update and remove plugins on the MPC itself, with rollback; for Gen1 and Gen2.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [
+       "bgserver-gen1"
+      ],
+      "folder": "portable/OpenMPC - VST - Plugin Manager",
+      "id": "plugin-manager-g2",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "OpenMPC",
+      "max_glibc": "2.17",
+      "name": "Plugin Manager",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [
+       "OpenMPC - VST - Plugin Manager G2"
+      ],
+      "schema": 1,
+      "skin": "OpenMPC - VST - Plugin Manager",
+      "so": "openmpc_pm_g2.so",
+      "source_repo": "open-mpc/plugin-manager",
+      "uid": "4f4d4732",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.3.5",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "9c2715178f8cfec0ffebe78ebcef6c3e4a31d6d94a18aef483cd3c44d6d30cd2",
+     "size": 31102666,
+     "url": "https://github.com/open-mpc/plugin-manager/releases/download/plugin-manager-g2-v1.3.5/Plugin-Manager-G2-1.3.5-mpc-armv7.zip",
+     "version": "1.3.5",
+     "vst2": {
+      "folder": "OpenMPC - VST - Plugin Manager"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-10-07",
+   "author": "sd88me",
+   "bar_missing": [
+    "cpu-bench",
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 2686,
+   "featured": false,
+   "id": "ottmpc",
+   "kind": "effect",
+   "latest": "2.0.0",
+   "latest_beta": null,
+   "license": "GPL-3.0-only",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 1,
+    "unanswered": 0
+   },
+   "name": "OTTmpc",
+   "repo": "sd88me/mpc-vst-OTT",
+   "source_available": false,
+   "style": "compressor",
+   "summary": "Vital's OTT multiband up/down compressor as an insert effect: live band meters with dB numbers, 12 Q-Link controls and 10 presets.",
+   "tags": [
+    "ott",
+    "multiband",
+    "compressor",
+    "dynamics"
+   ],
+   "tier": "listed",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-18",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "6aa53e23bc377b71e560e7dc61c6e5dd47e61d391ea10c2c25eb57c821fe0b20",
+       "size": 4611549,
+       "url": "https://github.com/sd88me/mpc-vst-OTT/releases/download/ottmpc-vst-v2.0.0/OTTmpc-2.0.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "91eda79a568487d8cccc3cb8c6c5b49f4049f4100d3ac0b15924c67befe40a50",
+       "size": 4598828,
+       "url": "https://github.com/sd88me/mpc-vst-OTT/releases/download/ottmpc-vst-v2.0.0/OTTmpc-2.0.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "327981e2c698804845510650353af6c45d37f48ee125601eb41ec26e0432b8e3",
+       "size": 4709024,
+       "url": "https://github.com/sd88me/mpc-vst-OTT/releases/download/ottmpc-vst-v2.0.0/OTTmpc-2.0.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Vital's OTT multiband up/down compressor as an insert effect: smooth band meters with peak hold, 12 Q-Link controls, 10 presets and your own in the PRESET menu.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/sd88me - VST - OTTmpc",
+      "id": "ottmpc",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "GPL-3.0-only",
+      "manufacturer": "sd88me",
+      "max_glibc": "2.27",
+      "name": "OTTmpc",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 2,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "sd88me - VST - OTTmpc",
+      "so": "ottmpc.so",
+      "source_repo": "sd88me/mpc-vst-OTT",
+      "uid": "764f5478",
+      "user_data": [
+       "ottmpc-presets.txt"
+      ],
+      "user_files": [],
+      "version": "2.0.0",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 2,
+     "requires": "",
+     "sha256": "91eda79a568487d8cccc3cb8c6c5b49f4049f4100d3ac0b15924c67befe40a50",
+     "size": 4598828,
+     "url": "https://github.com/sd88me/mpc-vst-OTT/releases/download/ottmpc-vst-v2.0.0/OTTmpc-2.0.0-mpc-armv7.zip",
+     "version": "2.0.0",
+     "vst2": {
+      "folder": "sd88me - VST - OTTmpc"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-12",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 2316,
+   "featured": false,
+   "id": "potentialheat",
+   "kind": "effect",
+   "latest": "1.6.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialHeat",
+   "repo": "PotentialBreakfast/mpc-vst-potentialheat",
+   "source_available": false,
+   "style": "saturation",
+   "summary": "Soft clipper and bus saturator: push drums, breaks or a whole beat into a warm curve (soft, tape or hard) that rounds the peaks off instead of clipping, with tone, ceiling, level match, mix, a live meter and 12 one-tap presets. Pairs with PotentialPunch.",
+   "tags": [
+    "saturation",
+    "soft-clipper",
+    "bus",
+    "drums",
+    "loudness",
+    "warmth"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "59b16a553ba25d50777ca4f12a526adca6076090c713885cdc09d957de0ae55d",
+       "size": 10685144,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialheat/releases/download/v1.6.0/PotentialHeat-1.6.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "07692221b8978a89ad6568a246bb06381ec38cc08f48e852375110d11b37566c",
+       "size": 10691660,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialheat/releases/download/v1.6.0/PotentialHeat-1.6.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "6828045be52294e5a1499cffa37f8f7ed5a9a287060361001ca3d8cde2787951",
+       "size": 10635297,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialheat/releases/download/v1.6.0/PotentialHeat-1.6.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 6.0,
+      "p99_pct": 4.7,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Soft clipper and bus saturator: warmth, glue and loudness without clipping, with one-tap presets.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 6.0,
+       "p99_pct": 4.7,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialHeat",
+      "id": "potentialheat",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "PotentialHeat",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialHeat",
+      "so": "potentialheat.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialheat",
+      "uid": "50624874",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.6.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "07692221b8978a89ad6568a246bb06381ec38cc08f48e852375110d11b37566c",
+     "size": 10691660,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialheat/releases/download/v1.6.0/PotentialHeat-1.6.0-mpc-armv7.zip",
+     "version": "1.6.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialHeat"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-12",
+   "author": "PotentialBreaks",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "collection": "potentialsuite",
+   "distribution": "release",
+   "downloads": 2470,
+   "featured": false,
+   "id": "potentialpatina",
+   "kind": "effect",
+   "latest": "1.7.0",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "PotentialPatina",
+   "repo": "PotentialBreakfast/mpc-vst-potentialpatina",
+   "source_available": false,
+   "style": "saturation",
+   "summary": "Retro-colour insert effect: vinyl and tape noise, wow and flutter, tape/tube/cassette drive, bit and sample-rate crush, a tone tilt and a small room, with presets from subtle dust to old radio.",
+   "tags": [
+    "lo-fi",
+    "vinyl",
+    "tape",
+    "bitcrusher",
+    "wobble"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "e94cfd22399db3b50ab15024b34d8dfc70715d9b0eb2ded948d288da335e38fa",
+       "size": 21025976,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpatina/releases/download/v1.7.0/PotentialPatina-1.7.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "68dc1d705a4841fd9f0dcd47838d0cef559340f0ac6167187f5908d868844ad4",
+       "size": 21032045,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpatina/releases/download/v1.7.0/PotentialPatina-1.7.0-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "1b0bd84661806eaefc2bc2e5b282b07674a9bbb036be7771cd296fae5091d814",
+       "size": 20997215,
+       "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpatina/releases/download/v1.7.0/PotentialPatina-1.7.0-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 8.8,
+      "p99_pct": 6.6,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Retro-colour insert effect: vinyl and tape noise, wobble, drive, bit-crush, tone and room in one box.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 8.8,
+       "p99_pct": 6.6,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/PotentialBreaks - VST - PotentialPatina",
+      "id": "potentialpatina",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "PotentialBreaks",
+      "max_glibc": "2.17",
+      "name": "PotentialPatina",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "PotentialBreaks - VST - PotentialPatina",
+      "so": "potentialpatina.so",
+      "source_repo": "PotentialBreakfast/mpc-vst-potentialpatina",
+      "uid": "50625074",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.7.0",
+      "vst2": true
+     },
+     "max_glibc": "2.17",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "68dc1d705a4841fd9f0dcd47838d0cef559340f0ac6167187f5908d868844ad4",
+     "size": 21032045,
+     "url": "https://github.com/PotentialBreakfast/mpc-vst-potentialpatina/releases/download/v1.7.0/PotentialPatina-1.7.0-mpc-armv7.zip",
+     "version": "1.7.0",
+     "vst2": {
+      "folder": "PotentialBreaks - VST - PotentialPatina"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-18",
+   "author": "Elsewave",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 87,
+   "featured": false,
+   "id": "scatterloom",
+   "kind": "effect",
+   "latest": "1.0.0",
+   "latest_beta": null,
+   "license": "MIT AND GPL-3.0-only",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "min_os": "3.10.1",
+   "name": "Scatterloom",
+   "repo": "shhQuiet/ScatterloomMPC",
+   "source_available": false,
+   "style": "sampler",
+   "summary": "Captures audio grains and weaves them into Euclidean rhythms with Markov-based grain selection.",
+   "tags": [
+    "granular",
+    "sequencer",
+    "euclidean"
+   ],
+   "tier": "verified",
+   "tip": "https://ko-fi.com/elsewavedsp",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "4a4de8e72f3a2be4c7044274e3c6a53420fabdec170b76699f0644e14d41281c",
+       "size": 8279914,
+       "url": "https://github.com/shhQuiet/ScatterloomMPC/releases/download/v1.0.0/Scatterloom-1.0.0-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "d7117053c38b90a92f5d5d8d25f50a5d9f1145d35c170997163ef3ef2dc90d11",
+       "size": 8256202,
+       "url": "https://github.com/shhQuiet/ScatterloomMPC/releases/download/v1.0.0/Scatterloom-1.0.0-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 18.8,
+      "p99_pct": 14.4,
+      "verdict": "PASS"
+     },
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Scatterloom is a granular rhythm effect for MPC standalone.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 18.8,
+       "p99_pct": 14.4,
+       "verdict": "PASS"
+      },
+      "extras": [],
+      "folder": "portable/Elsewave - VST - Scatterloom",
+      "id": "scatterloom",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT AND GPL-3.0-only",
+      "manufacturer": "Elsewave",
+      "max_glibc": "2.27",
+      "name": "Scatterloom",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "Elsewave - VST - Scatterloom",
+      "so": "VST/scatterloom-arm32.so",
+      "source_repo": "shhQuiet/ScatterloomMPC",
+      "uid": "53455a51",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.0.0",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "d7117053c38b90a92f5d5d8d25f50a5d9f1145d35c170997163ef3ef2dc90d11",
+     "size": 8256202,
+     "url": "https://github.com/shhQuiet/ScatterloomMPC/releases/download/v1.0.0/Scatterloom-1.0.0-mpc-armv7.zip",
+     "version": "1.0.0",
+     "vst2": {
+      "folder": "Elsewave - VST - Scatterloom"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-18",
+   "author": "Keebz",
+   "bar_missing": [
+    "cpu-bench",
+    "tested"
+   ],
+   "distribution": "release",
+   "downloads": 126,
+   "featured": false,
+   "id": "z950",
+   "kind": "effect",
+   "latest": "1.0.1",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "min_os": "3.10.1",
+   "name": "Z950",
+   "repo": "keebz/Z950",
+   "source_available": false,
+   "style": "multi-fx",
+   "summary": "Live Akai S-series style time stretch and pitch shift with an S950 filter, a CD-deck cue/scrub and a looper with adjustable sample rate.",
+   "tags": [
+    "time-stretch",
+    "sampler",
+    "lo-fi",
+    "looper",
+    "sseries",
+    "s950",
+    "s900",
+    "filter"
+   ],
+   "tier": "verified",
+   "updated": "2026-11-18",
+   "verified_on": [
+    "gen2"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "5284e4efe47aca0d8c078955d8cd4c5f1818283c629a8ef915869c15f336fe61",
+       "size": 5183174,
+       "url": "https://github.com/keebz/Z950/releases/download/v1.0.1/Z950-1.0.1-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "dad6f3b73e411e002968107e7fa5768cbbf34f4f590c3da9bb21b753c018bd5c",
+       "size": 5180109,
+       "url": "https://github.com/keebz/Z950/releases/download/v1.0.1/Z950-1.0.1-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-18",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "Z950: a live S1000-style time stretch / pitch shift with a CD-deck cue, scrub wheel and tempo-matched looper for the Akai MPC.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/Keebz - VST - Z950",
+      "id": "z950",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "Keebz",
+      "max_glibc": "2.27",
+      "name": "Z950",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "Keebz - VST - Z950",
+      "so": "VST/z950-arm32.so",
+      "source_repo": "keebz/Z950",
+      "uid": "4b685250",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.0.1",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "dad6f3b73e411e002968107e7fa5768cbbf34f4f590c3da9bb21b753c018bd5c",
+     "size": 5180109,
+     "url": "https://github.com/keebz/Z950/releases/download/v1.0.1/Z950-1.0.1-mpc-armv7.zip",
+     "version": "1.0.1",
+     "vst2": {
+      "folder": "Keebz - VST - Z950"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-14",
+   "author": "elizmita",
+   "bar_missing": [
+    "cpu-bench",
+    "tested"
+   ],
+   "distribution": "release",
+   "downloads": 736,
+   "featured": false,
+   "id": "spectral-sidechain",
+   "kind": "effect",
+   "latest": "1.6.7",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "DAVIS Spectral Sidechain",
+   "repo": "elizmita/davis-spectral-sidechain",
+   "source_available": false,
+   "style": "eq",
+   "summary": "One-band sidechain dynamic EQ: the kick ducks the bass frequencies, with a live spectrum display and a touchscreen skin.",
+   "tags": [
+    "sidechain",
+    "dynamic-eq",
+    "eq"
+   ],
+   "tier": "listed",
+   "updated": "2026-11-17",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "armv7": {
+       "sha256": "282acc1f6c3634117ebf363fdc1edc6e3069e4ac063f0de7933aba4241708f44",
+       "size": 3022657,
+       "url": "https://github.com/elizmita/davis-spectral-sidechain/releases/download/spectral-sidechain-vst-v1.6.7/Spectral-Sidechain-1.6.7-mpc-armv7.zip"
+      },
+      "sdk": {
+       "sha256": "c2f11d63dcd9a14f97fce2d9a04b168f2ae5406ab4c172724a2f3abccdfcc8ac",
+       "size": 3006686,
+       "url": "https://github.com/elizmita/davis-spectral-sidechain/releases/download/spectral-sidechain-vst-v1.6.7/Spectral-Sidechain-1.6.7-mpc-sdk.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-17",
+     "defer": true,
+     "depends": [],
+     "manifest": {
+      "about": "DAVIS Spectral Sidechain: a one-band sidechain dynamic EQ.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/DAVIS - VST - Spectral Sidechain",
+      "id": "spectral-sidechain",
+      "kind": "effect",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "DAVIS",
+      "max_glibc": "2.27",
+      "name": "Spectral Sidechain",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "DAVIS - VST - Spectral Sidechain",
+      "so": "spectral_sidechain.so",
+      "source_repo": "elizmita/davis-spectral-sidechain",
+      "uid": "44537053",
+      "user_data": [],
+      "user_files": [],
+      "version": "1.6.7",
+      "vst2": true
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "282acc1f6c3634117ebf363fdc1edc6e3069e4ac063f0de7933aba4241708f44",
+     "size": 3022657,
+     "url": "https://github.com/elizmita/davis-spectral-sidechain/releases/download/spectral-sidechain-vst-v1.6.7/Spectral-Sidechain-1.6.7-mpc-armv7.zip",
+     "version": "1.6.7",
+     "vst2": {
+      "folder": "DAVIS - VST - Spectral Sidechain"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-09-29",
+   "author": "sd88me",
+   "bar_missing": [
+    "cpu-bench",
+    "tested"
+   ],
+   "distribution": "release",
+   "downloads": 10981,
+   "featured": false,
+   "id": "acid",
+   "kind": "instrument",
+   "latest": "3.0.1",
+   "latest_beta": null,
+   "license": "GPL-3.0-only",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "Acid",
+   "repo": "sd88me/mpc-vst-acid",
+   "role": "midi",
+   "source_available": false,
+   "style": "sequencer",
+   "summary": "TB-303-style acid bassline sequencer: two blendable lines with generate/mutate, driving a synth track over MIDI, with a touchscreen skin and Q-Links.",
+   "tags": [
+    "303",
+    "acid",
+    "midi",
+    "bassline"
+   ],
+   "tier": "verified",
+   "tip": "https://ko-fi.com/sd88me",
+   "updated": "2026-11-16",
+   "verified_on": [
+    "gen2"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "24525246a0299c586fa547d48945edcf969ac70d5cc33a9f4874652ad75dae9a",
+       "size": 2961279,
+       "url": "https://github.com/sd88me/mpc-vst-acid/releases/download/acid-vst-v3.0.1/Acid-3.0.1-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "d143fbcb79cca7cbc35e1e8d3c1c6671a4d86d810319fa6643ab0ed529aa96ec",
+       "size": 2938510,
+       "url": "https://github.com/sd88me/mpc-vst-acid/releases/download/acid-vst-v3.0.1/Acid-3.0.1-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-16",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "TB-303-style acid bassline sequencer: two blendable lines with generate/mutate, driving a synth track over MIDI, with a touchscreen skin and Q-Links.",
+      "arch": "armv7",
+      "cpu": null,
+      "extras": [],
+      "folder": "portable/sd88me - VST - Acid",
+      "id": "acid",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "GPL-3.0-only",
+      "manufacturer": "sd88me",
+      "max_glibc": "2.29",
+      "name": "Acid",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 3,
+      "requires": "",
+      "retire": [],
+      "schema": 1,
+      "skin": "sd88me - VST - Acid",
+      "so": "acid.so",
+      "source_repo": "sd88me/mpc-vst-acid",
+      "uid": "41634964",
+      "user_data": [],
+      "user_files": [],
+      "version": "3.0.1",
+      "vst2": true
+     },
+     "max_glibc": "2.29",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 3,
+     "requires": "",
+     "sha256": "d143fbcb79cca7cbc35e1e8d3c1c6671a4d86d810319fa6643ab0ed529aa96ec",
+     "size": 2938510,
+     "url": "https://github.com/sd88me/mpc-vst-acid/releases/download/acid-vst-v3.0.1/Acid-3.0.1-mpc-armv7.zip",
+     "version": "3.0.1",
+     "vst2": {
+      "folder": "sd88me - VST - Acid"
+     },
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-10-03",
+   "author": "jacob-sabella",
+   "bar_missing": [
+    "tested",
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 6107,
+   "featured": false,
+   "id": "commander",
+   "kind": "addin",
+   "latest": "1.3.2",
+   "latest_beta": "0.1.3",
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "MPC Commander",
+   "repo": "jacob-sabella/mpc-addin-commander",
+   "shares_hooks": [
+    {
+     "id": "sample-rack",
+     "name": "MPC Sample Rack",
+     "symbols": [
+      "dlsym"
+     ],
+     "unchained": [
+      "commander"
+     ]
+    }
+   ],
+   "source_available": false,
+   "style": "utility",
+   "summary": "The plugins MPC loads, with their own skins, and MPC's transport, on a desktop app. Listens on the device only: reach it through an SSH tunnel (no login; bind=0.0.0.0 opens it to your network).",
+   "tags": [
+    "desktop",
+    "plugins",
+    "skins",
+    "transport",
+    "midi"
+   ],
+   "tier": "listed",
+   "tip": "https://github.com/sponsors/jacob-sabella",
+   "updated": "2026-11-16",
+   "verified_on": [],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "e50868d37ce1b40d244c9b58dea852aca9878fa9d22d3514b6bd26d683ecd659",
+       "size": 265890,
+       "url": "https://github.com/jacob-sabella/mpc-addin-commander/releases/download/commander-addin-v1.3.2/MPC-Commander-addin-1.3.2-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "63f36b2e9473b9b41d85a21325a4df08bbda1c2b0c8c1790242013c6616283b6",
+       "size": 259860,
+       "url": "https://github.com/jacob-sabella/mpc-addin-commander/releases/download/commander-addin-v1.3.2/MPC-Commander-addin-1.3.2-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-16",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "The plugins MPC loads, with their own skins, and MPC's transport, in a desktop app (through an SSH tunnel by default).",
+      "arch": "armv7",
+      "conf": "mpc_commander_addin.conf",
+      "cpu": null,
+      "files": [],
+      "id": "commander",
+      "kind": "addin",
+      "layout": "addin",
+      "license": "MIT",
+      "max_glibc": "2.17",
+      "name": "MPC Commander addin",
+      "param_compat": 1,
+      "requires": "",
+      "schema": 1,
+      "so": "mpc_commander_addin.so",
+      "source_repo": "jacob-sabella/mpc-addin-commander",
+      "user_data": [
+       "mpc_commander_addin.conf"
+      ],
+      "version": "1.3.2"
+     },
+     "max_glibc": "2.17",
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "63f36b2e9473b9b41d85a21325a4df08bbda1c2b0c8c1790242013c6616283b6",
+     "size": 259860,
+     "url": "https://github.com/jacob-sabella/mpc-addin-commander/releases/download/commander-addin-v1.3.2/MPC-Commander-addin-1.3.2-mpc-armv7.zip",
+     "version": "1.3.2",
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-10-24",
+   "author": "jacob-sabella",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 2490,
+   "featured": false,
+   "id": "filebrowser",
+   "kind": "addin",
+   "latest": "1.1.1",
+   "latest_beta": "0.1.1",
+   "license": "MIT AND Apache-2.0",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 1,
+    "unanswered": 0
+   },
+   "name": "MPC File Browser",
+   "repo": "jacob-sabella/mpc-addin-filebrowser",
+   "shares_hooks": [],
+   "source_available": false,
+   "style": "utility",
+   "summary": "FileBrowser Quantum beside MPC: browse the device's drives in a web browser, upload and download samples and projects, play audio, edit text files. Listens on the device only: reach it through an SSH tunnel (login admin / mpcadmin; change it). bind=0.0.0.0 opens it to your network.",
+   "tags": [
+    "files",
+    "browser",
+    "upload",
+    "samples",
+    "editor"
+   ],
+   "tier": "verified",
+   "tip": "https://github.com/sponsors/jacob-sabella",
+   "updated": "2026-11-13",
+   "verified_on": [
+    "gen1",
+    "sample"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "0af7db4d98f8b366d7f3146326b2397d159db37f1847c54f6675956a1e5be74a",
+       "size": 25729332,
+       "url": "https://github.com/jacob-sabella/mpc-addin-filebrowser/releases/download/filebrowser-addin-v1.1.1/MPC-File-Browser-1.1.1-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "da6d7629097b065c3a7004ca0ec33268a61a9e49196bb1c39cf38d05090b9ef5",
+       "size": 20123455,
+       "url": "https://github.com/jacob-sabella/mpc-addin-filebrowser/releases/download/filebrowser-addin-v1.1.1/MPC-File-Browser-1.1.1-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-13",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "FileBrowser Quantum beside MPC: browse, upload and download the device's drives in a web browser (through an SSH tunnel by default).",
+      "arch": "armv7",
+      "conf": "mpc_filebrowser_addin.conf",
+      "cpu": null,
+      "files": [
+       "filebrowser",
+       "filebrowser-run.sh",
+       "LICENSE-filebrowser"
+      ],
+      "id": "filebrowser",
+      "kind": "addin",
+      "layout": "addin",
+      "license": "MIT AND Apache-2.0",
+      "max_glibc": "2.7",
+      "name": "MPC File Browser",
+      "param_compat": 1,
+      "requires": "",
+      "schema": 1,
+      "so": "mpc_filebrowser_addin.so",
+      "source_repo": "jacob-sabella/mpc-addin-filebrowser",
+      "user_data": [
+       "mpc_filebrowser_addin.conf"
+      ],
+      "version": "1.1.1"
+     },
+     "max_glibc": "2.7",
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "da6d7629097b065c3a7004ca0ec33268a61a9e49196bb1c39cf38d05090b9ef5",
+     "size": 20123455,
+     "url": "https://github.com/jacob-sabella/mpc-addin-filebrowser/releases/download/filebrowser-addin-v1.1.1/MPC-File-Browser-1.1.1-mpc-armv7.zip",
+     "version": "1.1.1",
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-11-09",
+   "author": "jacob-sabella",
+   "bar_missing": [
+    "tested-gen2"
+   ],
+   "distribution": "release",
+   "downloads": 1109,
+   "featured": false,
+   "id": "gateway",
+   "kind": "addin",
+   "latest": "1.0.2",
+   "latest_beta": "0.1.1",
+   "license": "MIT AND Apache-2.0",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 0,
+    "unanswered": 0
+   },
+   "name": "MPC Gateway",
+   "repo": "jacob-sabella/mpc-addin-gateway",
+   "shares_hooks": [],
+   "source_available": false,
+   "style": "utility",
+   "summary": "One HTTPS address and one login (mpc / mpc until you change it on its Settings page) for every addin's web page. A start page lists the services addins declare (ADDIN_WEB_PORT), each routed behind the password. Runs Caddy beside MPC. Device only by default (reach it through an SSH tunnel); bind=0.0.0.0 opens it to your network.",
+   "tags": [
+    "network",
+    "https",
+    "login",
+    "web",
+    "gateway"
+   ],
+   "tier": "verified",
+   "tip": "https://github.com/sponsors/jacob-sabella",
+   "updated": "2026-11-13",
+   "verified_on": [
+    "gen1",
+    "sample"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "aarch64": {
+       "sha256": "250773c728525abac44637f7e9fca17ef502472387801551653160b129907859",
+       "size": 16331577,
+       "url": "https://github.com/jacob-sabella/mpc-addin-gateway/releases/download/gateway-addin-v1.0.2/MPC-Gateway-1.0.2-mpc-aarch64.zip"
+      },
+      "armv7": {
+       "sha256": "eafd444da6b3af3f39aeb04b32701cc70c8bbc2f23ed4ec4b9449bb43d185487",
+       "size": 17031796,
+       "url": "https://github.com/jacob-sabella/mpc-addin-gateway/releases/download/gateway-addin-v1.0.2/MPC-Gateway-1.0.2-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": null,
+     "date": "2026-11-13",
+     "defer": true,
+     "depends": [],
+     "gen2": true,
+     "manifest": {
+      "about": "One HTTPS front door with one password (Caddy) for the web services addins declare: a start page that lists them, and a route or port for each. Device only by default; reach it through an SSH tunnel, or open it with bind=0.0.0.0.",
+      "arch": "armv7",
+      "conf": "mpc_gateway_addin.conf",
+      "cpu": null,
+      "files": [
+       "caddy",
+       "gateway-run.sh",
+       "gateway-settings",
+       "LICENSE-caddy"
+      ],
+      "id": "gateway",
+      "kind": "addin",
+      "layout": "addin",
+      "license": "MIT AND Apache-2.0",
+      "max_glibc": "2.7",
+      "name": "MPC Gateway",
+      "param_compat": 1,
+      "requires": "",
+      "schema": 1,
+      "so": "mpc_gateway_addin.so",
+      "source_repo": "jacob-sabella/mpc-addin-gateway",
+      "user_data": [
+       "mpc_gateway_addin.conf"
+      ],
+      "version": "1.0.2"
+     },
+     "max_glibc": "2.7",
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "eafd444da6b3af3f39aeb04b32701cc70c8bbc2f23ed4ec4b9449bb43d185487",
+     "size": 17031796,
+     "url": "https://github.com/jacob-sabella/mpc-addin-gateway/releases/download/gateway-addin-v1.0.2/MPC-Gateway-1.0.2-mpc-armv7.zip",
+     "version": "1.0.2",
+     "yanked": false
+    }
+   ]
+  },
+  {
+   "added": "2026-10-01",
+   "author": "poloq",
+   "bar_missing": [],
+   "distribution": "release",
+   "downloads": 4580,
+   "featured": false,
+   "id": "mpc-plaits",
+   "kind": "instrument",
+   "latest": "1.0.1",
+   "latest_beta": null,
+   "license": "MIT",
+   "maintenance": {
+    "archived": false,
+    "open_issues": 1,
+    "unanswered": 0
+   },
+   "name": "MPC Plaits",
+   "repo": "poloq-instruments/mpc-vst-plaits",
+   "source_available": false,
+   "style": "synth",
+   "summary": "Mutable Instruments Plaits, all 24 models, with LFOs, envelopes, two mod matrices, tempo sync and a touchscreen skin.",
+   "tags": [
+    "mutable-instruments",
+    "plaits",
+    "macro-oscillator",
+    "eurorack"
+   ],
+   "tier": "verified",
+   "updated": "2026-10-05",
+   "verified_on": [
+    "gen1"
+   ],
+   "versions": [
+    {
+     "assets": {
+      "armv7": {
+       "sha256": "76986f7a6d221bcba9cb8e3289b659bb25527af146dde7df2b535cb259f1c763",
+       "size": 5813725,
+       "url": "https://github.com/poloq-instruments/mpc-vst-plaits/releases/download/v1.0.1/MPC-Plaits-1.0.1-mpc-armv7.zip"
+      }
+     },
+     "channel": "stable",
+     "conflicts": [],
+     "cpu": {
+      "max_pct": 34.6,
+      "p99_pct": 23.7,
+      "verdict": "WARN"
+     },
+     "date": "2026-10-05",
+     "defer": true,
+     "depends": [],
+     "manifest": {
+      "about": "Mutable Instruments Plaits (all 24 models) as a native instrument, with modulation and a touchscreen skin.",
+      "arch": "armv7",
+      "cpu": {
+       "max_pct": 34.6,
+       "p99_pct": 23.7,
+       "verdict": "WARN"
+      },
+      "extras": [],
+      "folder": "portable/poloq - VST - MPC Plaits",
+      "id": "mpc-plaits",
+      "kind": "instrument",
+      "layout": "portable",
+      "license": "MIT",
+      "manufacturer": "poloq",
+      "max_glibc": "2.27",
+      "name": "MPC Plaits",
+      "param_compat": 1,
+      "requires": "",
+      "schema": 1,
+      "skin": "poloq - VST - MPC Plaits",
+      "so": "plaits.so",
+      "source_repo": "poloq-instruments/mpc-vst-plaits",
+      "uid": "4d69506c",
+      "user_data": [],
+      "version": "1.0.1"
+     },
+     "max_glibc": "2.27",
+     "os_compat": [
+      "3.x"
+     ],
+     "param_compat": 1,
+     "requires": "",
+     "sha256": "76986f7a6d221bcba9cb8e3289b659bb25527af146dde7df2b535cb259f1c763",
+     "size": 5813725,
+     "url": "https://github.com/poloq-instruments/mpc-vst-plaits/releases/download/v1.0.1/MPC-Plaits-1.0.1-mpc-armv7.zip",
+     "version": "1.0.1",
+     "yanked": false
+    }
+   ]
+  }
+ ],
+ "schema": 1
+}

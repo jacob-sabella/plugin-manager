@@ -33,6 +33,7 @@
 #include <gnu/libc-version.h>
 #include "plugin_list_awk.h"
 #include "vst2_migrate_sh.h"
+#include "recover_sh.h"
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -74,7 +75,7 @@ typedef struct {
 #endif
 /* The version of this build, shown on the ABOUT page. The release workflow fails when its version input differs from this. */
 #ifndef PM_VERSION
-#define PM_VERSION "1.3.7"
+#define PM_VERSION "2.0.0"
 #endif
 #define WORK "/tmp/openmpc-pm"
 #define MAXPKG 1024   /* cards kept: the catalog (272 plugins on 2026-11-17), then local zips and unregistered folders; what does not fit is logged */
@@ -135,11 +136,14 @@ typedef struct {
     int vis_n, vis_idx[MAXPKG];
     int confirm;                  /* the restart prompt is open (the second APPLY); only shown while ready */
     long long theme_t, tap_t;     /* ms of the last accepted theme press / button press (monotonic) */
+    int retry_n; long long retry_at;   /* the catalog could not be reached: tries made on their own, and when the next one is due (monotonic ms, 0: none) */
     char tap_key[32];             /* the button of that press */
     long long kb_t;               /* ms of the last accepted keyboard key (monotonic) */
     char kb_key[16];              /* that key */
     int theme, theme_applied, theme_can;   /* 0 dark, 1 light: the one wanted, the one in `Plugin Skins` at MPC's start, and whether the folder holds both skins */
     char own[300];                /* this plugin's own folder (its skins live there) */
+    int wsel, wsel_on, wsel_idle, wsel_half;   /* wsel_half: the Q-Links take two ticks per card (one felt touchy): the parameter counts half cards */
+    int qpage_idle, qpage_half;   /* Q-Link 2 (qpage): the page, two ticks per page */            /* the data wheel's highlighted card (a position in the visible list) and whether the wheel has been used (#11) */
     int theme_seen, theme_boot;   /* theme_init ran once; the wanted theme differed from the skin in place at that first start (an update brings the packaged skin) */
     int tsel, reprompt;           /* which usable location new installs go to; CHANGE re-prepares and reopens the prompt */
     int sort;                     /* 0 last updated, 1 newest (first release), 2 most downloaded, 3 name */
@@ -869,12 +873,26 @@ static int internal_device(const char *path) {
     return !strncmp(best_dev, "/dev/nvme", 9) || !strncmp(best_dev, "/dev/mmcblk0", 12) || !strncmp(best_dev, "/dev/loop", 9);
 }
 
+/* How many of MPC's Synths folders are refused only because their drive is full: the usual reason installing stops working on a
+ * device that worked (the banner said "None of MPC's 1 Synths folders can take a plugin", which reads as a broken setup). */
+static const char *bad_target(const char *path, char *why, size_t n);
+static int full_locations(const device_t *d) {
+    int k = 0;
+    char why[200];
+    for (int i = 0; i < d->nloc; i++) {
+        const char *bad = bad_target(d->loc[i], why, sizeof why);
+        k += bad && !strncmp(bad, "under ", 6);
+    }
+    return k;
+}
+
 /* The banner and the status line for a `problem` (short: the banner is 590 px of 23 px text): what is wrong, in plain words. The reasons per
  * location are in device.txt. */
 static void problem_words(const device_t *d, char *out, size_t n) {
     const char *p = d->problem;
     if (!strcmp(p, "No MPC.settings")) snprintf(out, n, "No MPC.settings found: nothing can be installed");
     else if (!strcmp(p, "No install location") && !d->nloc) snprintf(out, n, "MPC lists no Synths folder to install into");
+    else if (!strcmp(p, "No install location") && full_locations(d)) snprintf(out, n, "Drive full (under 64 MB free): remove something to install");
     else if (!strcmp(p, "No install location")) snprintf(out, n, "None of MPC's %d Synths folders can take a plugin", d->nloc);
     else if (!strncmp(p, "No ", 3)) snprintf(out, n, "This MPC lacks %s, which the manager needs", p + 3);
     else snprintf(out, n, "%s", p);
@@ -929,6 +947,23 @@ static int good_target(const char *loc) {
 /* ---- LOCATIONS tab: what is known about each Synths folder MPC lists ---- */
 static int loc_target_index(const mgr_t *m, const char *path);   /* below, with the other target helpers */
 static int ntargets(const mgr_t *m);
+
+/* A mount table entry for exactly this path: the path is a drive of its own, not a folder on another. */
+static int own_mount(const char *path) {
+#ifdef FS_ANY
+    FILE *f = fopen(!access("/tmp/pm-mounts", R_OK) ? "/tmp/pm-mounts" : "/proc/mounts", "r");
+#else
+    FILE *f = fopen("/proc/mounts", "r");
+#endif
+    char dev[128], mnt[256];
+    int found = 0;
+    while (f && !found && fscanf(f, "%127s %255s %*s %*s %*d %*d", dev, mnt) == 2) {
+        mount_unescape(mnt);
+        found = !strcmp(mnt, path);
+    }
+    if (f) fclose(f);
+    return found;
+}
 
 static int mount_of(const char *path, char *fs, size_t nf, int *rw, int *exec) {
 #ifdef FS_ANY
@@ -2007,10 +2042,15 @@ static void probe_device(device_t *d) {
             if (internal) roots[nr++] = lroot[i];
         }
         roots[nr++] = "/nvme"; roots[nr++] = "/storage"; roots[nr++] = "/media/az01-internal"; roots[nr++] = "/sdcard";
+        /* On a unit with a content drive of its own (Key 37: /storage, also /media/acvs-content) MPC does not scan the data partition's
+         * VST2 Plugins: on a Key 37 on 3.10.1.12 (2026-11-20) a plugin there was never opened, the one in /storage was read at start.
+         * With /storage full the Manager put plugins there, and they never showed up. Where there is no such drive it stays a candidate. */
+        int content_drive = own_mount("/storage") || own_mount("/nvme") || own_mount("/media/acvs-content");
         for (int i = 0; i < nr && !d->target[0]; i++) {
             char fs[32] = "", vd[220];
             int rw = 0, ex = 0;
             struct statvfs sv;
+            if (content_drive && !strcmp(roots[i], "/media/az01-internal")) continue;
             if (!is_dir(roots[i]) || !safe(roots[i]) || !mount_of(roots[i], fs, sizeof fs, &rw, &ex) || !rw) continue;
             if (!strcmp(fs, "tmpfs") || !strcmp(fs, "ramfs") || !strcmp(fs, "devtmpfs") || !strcmp(fs, "squashfs") || !strcmp(fs, "erofs")
                 || !strcmp(fs, "iso9660") || !strcmp(fs, "cramfs")) continue;
@@ -2019,6 +2059,26 @@ static void probe_device(device_t *d) {
             snprintf(d->target, sizeof d->target, "%s", vd);
             snprintf(d->via, sizeof d->via, "VST2 Plugins, no usable Synths folder");
         }
+        /* No internal drive can take it (read-only, full): a drive that is plugged in can. 3.10.1 loads from "<drive>/VST2 Plugins" on
+         * any drive, the same drives the drive menu offers below. A Force with a usable SSD said "No install location". */
+#ifdef FS_ANY
+        FILE *xf = d->target[0] ? NULL : fopen(!access("/tmp/pm-mounts", R_OK) ? "/tmp/pm-mounts" : "/proc/mounts", "r");
+#else
+        FILE *xf = d->target[0] ? NULL : fopen("/proc/mounts", "r");
+#endif
+        char xd[128], xm[256], xt[32], xo[512];
+        while (xf && !d->target[0] && fscanf(xf, "%127s %255s %31s %511s %*d %*d", xd, xm, xt, xo) == 4) {
+            struct statvfs sv;
+            mount_unescape(xm);
+            const char *lab = xm + 7;
+            if (strncmp(xm, "/media/", 7) || !*lab || strchr(lab, '/') || !strncmp(lab, "az01-internal", 13) || !strncmp(lab, "acvs-", 5)) continue;
+            if (strncmp(xo, "rw", 2) || (xo[2] && xo[2] != ',') || !strcmp(xt, "tmpfs") || !strcmp(xt, "ramfs") || !strcmp(xt, "squashfs")) continue;
+            if (strlen(xm) > 180 || !safe(xm) || !is_dir(xm)) continue;
+            if (statvfs(xm, &sv) || (unsigned long long)sv.f_bavail * sv.f_frsize < 64ull << 20) continue;
+            snprintf(d->target, sizeof d->target, "%s/VST2 Plugins", xm);
+            snprintf(d->via, sizeof d->via, "VST2 Plugins on %.40s, no usable internal drive", lab);
+        }
+        if (xf) fclose(xf);
     }
     /* No fallback: MPC draws a plugin's skin only from a listed content location (docs/NOTES.md in mpc-vst-plugins, 2026-10-27),
      * so a folder that is not on the list would install a plugin that loads with no skin. With nothing usable listed the
@@ -2055,6 +2115,9 @@ static void probe_device(device_t *d) {
      * is offered: MPC remounts it with exec for VST2 plugins (firmware strings, 2026-10-31; not yet seen on a device). */
     if (d->vst2 == 2 && d->vst2dir[0]) {
         snprintf(d->vdrv[0], sizeof d->vdrv[0], "%s", d->vst2dir);
+        if (!strncmp(d->vst2dir, "/media/", 7) && strncmp(d->vst2dir + 7, "az01-internal", 13))   /* the target is a plugged-in drive: its label */
+            snprintf(d->vname[0], sizeof d->vname[0], "%.*s", (int)strcspn(d->vst2dir + 7, "/") > 20 ? 20 : (int)strcspn(d->vst2dir + 7, "/"), d->vst2dir + 7);
+        else
         snprintf(d->vname[0], sizeof d->vname[0], "Internal");
         d->nvdrv = 1;
 #ifdef FS_ANY
@@ -2154,7 +2217,9 @@ static void probe_device(device_t *d) {
     snprintf(parent, sizeof parent, "%s", ADDINS_DIR);
     char *ps = strrchr(parent, '/');
     if (ps && ps != parent) *ps = 0;
-    if (is_dir(parent) && access(parent, W_OK) == 0) snprintf(d->addins, sizeof d->addins, "%s", ADDINS_DIR);
+    /* writable: the folder itself when it is there (it can be read-only on its own: a bind mount, a mod's overlay), else its parent */
+    if (is_dir(ADDINS_DIR) ? access(ADDINS_DIR, W_OK) == 0 : is_dir(parent) && access(parent, W_OK) == 0)
+        snprintf(d->addins, sizeof d->addins, "%s", ADDINS_DIR);
     DIR *ad = d->addins[0] ? opendir(d->addins) : NULL;
     while (ad && (e = readdir(ad)) && d->naddin < 32) {
         addin_t *a = &d->addin[d->naddin];
@@ -2582,6 +2647,8 @@ static int prune_backups(const device_t *d) {
     return gone;
 }
 
+#define NO_SAFE_COPY "no safe copy could be kept"   /* in a result line: this item was not put back as it was */
+
 /* The result of the last apply (apply.sh's per-item lines "id|ok|" or "id|fail|reason"), shown once after MPC is back. */
 static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
     /* MPC creates the plugin more than once (it opens it twice), and each instance refreshes: claim the file by renaming it, so exactly
@@ -2591,7 +2658,7 @@ static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
     if (rename(WORK "/result", mine)) return;
     char *s = slurp(mine, 8192);
     if (!s) { unlink(mine); return; }
-    int ok = 0, bad = 0;
+    int ok = 0, bad = 0, lost = 0, cut = 0;
     char first[300] = "";
     char *sv = NULL;
     for (char *l = strtok_r(s, "\n", &sv); l; l = strtok_r(NULL, "\n", &sv)) {
@@ -2604,6 +2671,8 @@ static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
             if (sscanf(b + 1, "%11s %23s", act, ver) >= 1 && strncmp(l, "loc-", 4)) hist_record(m->dev, l, act, ver);
         }
         else {
+            if (strstr(b + 1, NO_SAFE_COPY)) lost = 1;
+            if (!strncmp(b + 1, "interrupted", 11)) cut++;
             if (!bad++) {
                 const char *name = l;
                 for (int i = 0; i < n; i++) if (!strcmp(pkg[i].id, l)) name = pkg[i].name;
@@ -2615,8 +2684,26 @@ static void show_result(mgr_t *m, const pkg_t *pkg, int n) {
     rename(mine, WORK "/result.seen");
     if (!ok && !bad) return;
     if (ok) prune_backups(m->dev);
-    if (bad) say_locked(m, ERR, "Last apply: %d done, %d failed and put back as they were. %s", ok, bad, first);
+    if (cut) say_locked(m, ERR, "The last update did not finish. %s", first);
+    else if (bad) say_locked(m, ERR, "Last apply: %d done, %d failed%s. %s", ok, bad, lost ? "" : " and put back as they were", first);
     else say_locked(m, OK, "Last apply: %d done.", ok);
+}
+
+/* An apply cut off by a power cut or a switch-off left its journal (apply.sh, recover.sh): finish or undo it before anything else, so
+ * the folders read below are the ones that stay. Only renames and deletes of leftovers, safe while MPC runs; recover.sh does nothing while
+ * that apply.sh still runs (the background server refreshes during an apply). What it did is shown once, like an apply's result. */
+static void recover_cut_off(mgr_t *m) {
+    char j[300];
+    if (!m->dev->base[0] || snprintf(j, sizeof j, "%s/.openmpcpm-journal", m->dev->base) >= (int)sizeof j || !is_file(j)) return;
+    mkdir(WORK, 0755);
+    FILE *v = fopen(WORK "/recover.sh", "w");
+    if (!v) return;
+    fputs(RECOVER_SH, v);
+    fclose(v);
+    char *argv[] = {"sh", WORK "/recover.sh", j, WORK "/result", NULL};
+    int rc = run(argv);
+    logf_("an apply was cut off: recover.sh exit %d", rc);
+    probe_device(m->dev);
 }
 
 static void do_refresh(mgr_t *m) {
@@ -2653,6 +2740,7 @@ static void do_refresh(mgr_t *m) {
     }
     free(s.buf);
     probe_device(m->dev);
+    recover_cut_off(m);
     l.n = add_local(m->dev, tmp, l.n);
     theme_init(m);
     if (retire_old_self(m) + repair_vst2_json(m)) probe_device(m->dev);   /* the old folder's entry is gone; repaired folders are listed */
@@ -2691,6 +2779,11 @@ static void do_refresh(mgr_t *m) {
     for (int i = 0; i < l.n; i++) if (!strcmp(tmp[i].id, sel)) m->sel = i;
     m->online = !offline;
     m->loaded = 1;
+    /* Unreachable: try again on its own, three times (5, 15 and 40 s later). MPC opens the last project while Wi-Fi is still joining,
+     * and the Manager then stayed offline until someone found REFRESH. */
+    static const int again[] = {5000, 15000, 40000};
+    if (offline == 1 && m->retry_n < 3) m->retry_at = mono_ms() + again[m->retry_n++];
+    else { m->retry_at = 0; if (!offline) m->retry_n = 0; }
     m->disk_used = used;
     snprintf(m->disk_free, sizeof m->disk_free, "%s", freebuf);
     if (m->dev->problem[0]) {
@@ -2862,6 +2955,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
             }
         }
     }
+    int nsteps = nq + (m->migrate ? 1 : 0) + m->nregq + (theme_dirty(m) ? 1 : 0) + 1;   /* the last one: starting MPC */
     FILE *f = err ? NULL : fopen(WORK "/apply.sh", "w");
     if (!err && !f) err = "apply.sh could not be written";
     if (f) {
@@ -2872,47 +2966,134 @@ static void prepare(mgr_t *m, pkg_t *q) {
                    "setstate() { grep -v \"^$1 \" \"$STATE\" 2>/dev/null > \"$STATE.new\"; [ -n \"$2\" ] && echo \"$1 $2\" >> \"$STATE.new\"; mv \"$STATE.new\" \"$STATE\"; }\n"
                    "batch() { grep -q -- '-n)' \"$1\" && printf '%%s' -n; }   # older installers lack -n and restart MPC themselves\n"
                    "SETTINGS='%s'; SNAP='" WORK "/snap'; RES='" WORK "/result'\nrm -rf \"$SNAP\"; mkdir -p \"$SNAP\"; : > \"$RES\"\n"
-                   /* item ID FOLDER cmd...: snapshot the plugin folder and MPC.settings, run cmd; on failure put both back and say why (DESIGN 7) */
-                   "item() {\n  id=$1; dir=$2; act=$3; ver=$4; shift 4; snap=''\n"
-                   /* a safety copy an earlier apply left (MPC power-cycled mid-copy, plugin-manager #46). Only a copy marked complete
-                    * (<snap>.done) is ever put back, and only when the plugin folder is gone; with the folder there it is just removed */
-                   "  if [ -n \"$dir\" ]; then old=\"$(dirname \"$dir\")/.pm-snap-$id\"\n"
-                   "    if [ -e \"$old\" ] && [ -d \"$dir\" ]; then rm -rf \"$old\" \"$old.done\"; echo \"removed the safety copy an earlier update left at $old\"\n"
-                   "    elif [ -e \"$old\" ] && [ -f \"$old.done\" ]; then mv \"$old\" \"$dir\" && rm -f \"$old.done\" && echo \"put $dir back from the safety copy an earlier update left\"\n"
-                   "    elif [ -e \"$old\" ]; then echo \"$id|fail|an earlier update was cut off and left an incomplete safety copy at $old\" >> \"$RES\"; return 1; fi\n"
-                   "  fi\n"
-                   /* a small folder is copied to RAM (WORK); a big one to a hidden sibling on its own drive, after a free-space check.
-                    * On its own drive the installer's staged copy needs as much room again, so twice the folder (plus 64 MB) must be free */
+                   /* the journal (on the settings drive, so it survives a power cut): an apply cut off before is finished or undone first
+                    * (recover.sh, the same script the Manager runs at start), then this one records each step it begins and ends */
+                   "J='%s/.openmpcpm-journal'; PROG='" WORK "/progress'; NSTEP=%d; STEP=0; TAB=$(printf '\\t')\n"
+                   "[ -f \"$J\" ] && APPLY_PID=$$ sh '" WORK "/recover.sh' \"$J\" \"$RES\"\n"
+                   "printf 'pid\\t%%s\\n' $$ > \"$J\"; sync\n"
+                   "jot() { printf '%%s\\n' \"$*\" >> \"$J\"; sync; }\n"
+                   /* the update screen on the MPC's own display (src/splash.c; through Akai's splash where there is one). It never holds the
+                    * display while MPC could start, exits by itself once MPC runs or this script is gone, and is stopped before MPC starts */
+                   "SPL=''\nsplash_start() { [ -x '" WORK "/splash' ] && ! pidof MPC >/dev/null || return 0; [ -n \"$SPL\" ] && kill -0 \"$SPL\" 2>/dev/null && return 0; '" WORK "/splash' \"$PROG\" '" WORK "/names' & SPL=$!; }\n"
+                   "splash_stop() { [ -n \"$SPL\" ] || return 0; kill \"$SPL\" 2>/dev/null; i=0; while kill -0 \"$SPL\" 2>/dev/null && [ $i -lt 5 ]; do sleep 1; i=$((i + 1)); done; kill -9 \"$SPL\" 2>/dev/null; wait \"$SPL\" 2>/dev/null; SPL=''; "
+                   "[ -x /usr/bin/az0x-splashctl ] && /usr/bin/az0x-splashctl drop-display >/dev/null 2>&1; return 0; }\n"
+                   "printf '0\\t%%s\\twait\\t\\t\\n' \"$NSTEP\" > \"$PROG\"; splash_start\n"
+                   /* what the web page shows while MPC is stopped: step, of, act, id, version */
+                   "progress() { STEP=$((STEP + 1)); printf '%%s\\t%%s\\t%%s\\t%%s\\t%%s\\n' \"$STEP\" \"$NSTEP\" \"$1\" \"$2\" \"$3\" > \"$PROG.new\" && mv \"$PROG.new\" \"$PROG\"; }\n"
+                   /* item ID FOLDER ACT VER cmd...: one step, journalled */
+                   "item() { progress \"$3\" \"$1\" \"$4\"; jot \"begin$TAB$1$TAB$2$TAB$3\"; item_run \"$@\"; r=$?; jot \"end$TAB$1\"; return $r; }\n"
+                   /* What a power cut left in a plugin location (#46: a half-made copy blocked every later update, with no way to clear it).
+                    * A copy on the drive is made as .pm-safe-<id>.part and renamed when whole, so a .pm-safe-<id> is always whole: it is put
+                    * back, the folder it replaces moved aside until it is. A .part is dropped. A .pm-snap-<id> is from Manager 1.3.7 or older:
+                    * with the folder there it is removed; with the folder gone it is put back only if marked complete (<snap>.done, 1.3.7);
+                    * unmarked it may be half a copy (older Managers wrote no marker), so it stays and the item is a reported failure. */
+                   "heal() {\n  loc=$1; id=$2; dir=$3\n"
+                   "  for s in \"$loc\"/.pm-safe-*; do\n"
+                   "    [ -d \"$s\" ] || continue\n"
+                   "    case $s in *.part) rm -rf \"$s\"; echo \"-- dropped an unfinished safe copy: $s\"; continue ;; esac\n"
+                   "    bad=\"$loc/.pm-failed-${s##*/.pm-safe-}\"\n"
+                   "    for f in \"$s\"/*; do\n"
+                   "      [ -d \"$f\" ] || continue; t=\"$loc/${f##*/}\"; rm -rf \"$bad\"\n"
+                   "      if [ -e \"$t\" ] && ! mv \"$t\" \"$bad\"; then echo \"-- could not move $t aside; the safe copy stays at $s\"; continue; fi\n"
+                   "      if mv \"$f\" \"$t\"; then rm -rf \"$bad\"; echo \"-- put back ${f##*/} from the safe copy of an update that did not finish\"\n"
+                   "      else [ -e \"$bad\" ] && mv \"$bad\" \"$t\"; echo \"-- could not put back ${f##*/}; the safe copy stays at $s\"; fi\n"
+                   "    done\n"
+                   "    rmdir \"$s\" 2>/dev/null\n"
+                   "  done\n"
+                   "  if [ -e \"$loc/.pm-safe-$id\" ]; then echo \"$id|fail|could not put back the safe copy at $loc/.pm-safe-$id\" >> \"$RES\"; return 1; fi\n"
+                   "  old=\"$loc/.pm-snap-$id\"\n"
+                   "  if [ -e \"$old\" ] && [ -d \"$dir\" ]; then rm -f \"$old.done\"; rm -rf \"$old\"; echo \"removed the safety copy an earlier update left at $old\"\n"
+                   "  elif [ -e \"$old\" ] && [ -f \"$old.done\" ]; then\n"
+                   "    if mv \"$old\" \"$dir\"; then rm -f \"$old.done\"; rm -rf \"$loc/.pm-failed-$id\"; echo \"put $dir back from the safety copy an earlier update left\"\n"
+                   "    else echo \"$id|fail|could not put back the safety copy at $old\" >> \"$RES\"; return 1; fi\n"
+                   "  elif [ -e \"$old\" ]; then echo \"$id|fail|an earlier update was cut off and left an incomplete safety copy at $old\" >> \"$RES\"; return 1\n"
+                   "  else rm -f \"$old.done\"; fi\n}\n"
+                   "item_run() {\n  id=$1; dir=$2; act=$3; ver=$4; shift 4; snap=''; side=''; nocopy=''; keep=0\n"
+                   "  if [ -n \"$dir\" ]; then heal \"$(dirname \"$dir\")\" \"$id\" \"$dir\" || return 1; fi\n"
+                   /* A small folder is copied to RAM (WORK); a big one to a hidden sibling on its own drive, after a free-space check.
+                    * "Small" is by what the files hold (ls), not by what the drive says they take (du): on an exFAT card with big clusters
+                    * the Manager's 70 MB read as 932 MB, and copying that on the card took minutes with a dark screen (#46). The room needed
+                    * on the drive is by du, since that is what a copy takes there, and twice it: the installer stages its own copy there too. */
                    "  if [ -n \"$dir\" ] && [ -d \"$dir\" ]; then\n"
-                   "    sz=$(du -sk \"$dir\" 2>/dev/null | cut -f1); sz=${sz:-0}\n"
-                   "    if [ \"$sz\" -le \"${PM_SNAP_KB:-49152}\" ]; then snap=\"$SNAP/$id.dir\"; need=$((sz + 65536)); else snap=\"$(dirname \"$dir\")/.pm-snap-$id\"; need=$((2 * sz + 65536)); fi\n"
-                   "    free=$(df -Pk \"$(dirname \"$snap\")\" 2>/dev/null | awk 'NR==2 {print $4}')\n"
-                   "    if [ \"${free:-0}\" -lt $need ]; then echo \"$id|fail|not enough free space to keep a safe copy\" >> \"$RES\"; return 1; fi\n"
-                   "    echo \"-- safety copy of $dir ($((sz / 1024)) MB), MPC starts again when the update is done\"\n"
-                   "    cp -a \"$dir\" \"$snap\" && : > \"$snap.done\" || { rm -rf \"$snap\" \"$snap.done\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
+                   "    sz=$(ls -lR \"$dir\" 2>/dev/null | awk '{ s += $5 } END { print int(s / 1024) + 1 }'); sz=${sz:-0}\n"
+                   "    cap=${PM_SNAP_KB:-49152}; mem=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null)\n"
+                   "    [ -z \"${PM_SNAP_KB+x}\" ] && [ \"${mem:-0}\" -ge $((sz * 2 + 131072)) ] && cap=196608   # MPC is stopped: its memory is free\n"
+                   /* A removal stages nothing, and is how a user makes room on a full drive: it is never refused for want of room for a copy */
+                   "    wfree=$(df -Pk '" WORK "' 2>/dev/null | awk 'NR==2 {print $4}')\n"
+                   "    if [ \"$act\" = remove ] && { [ \"$sz\" -gt \"$cap\" ] || [ \"${wfree:-0}\" -lt $((sz + 65536)) ]; }; then\n"
+                   "      nocopy=1; echo \"-- $id: removed without a safe copy (too big to copy, or no room for one)\"\n"
+                   /* A big folder is not copied when its installer stages the new version beside it and swaps it in at the end (every
+                    * install.sh since 2026-09-29: the old folder stays in place until then). Its rollback keeps what is in place and puts
+                    * MPC.settings back. The drive needs room for the installer's staged copy (by du: what it takes there). */
+                   "    elif [ \"$sz\" -gt \"$cap\" ] && [ \"$act\" = install ] && grep -q 'STAGE=' \"$2\" 2>/dev/null; then keep=1\n"
+                   "      copy=$(du -sk \"$dir\" 2>/dev/null | cut -f1); free=$(df -Pk \"$(dirname \"$dir\")\" 2>/dev/null | awk 'NR==2 {print $4}')\n"
+                   "      if [ \"${free:-0}\" -lt $((${copy:-$sz} + 65536)) ]; then echo \"$id|fail|not enough free space for the update\" >> \"$RES\"; return 1; fi\n"
+                   "      echo \"-- $id: no copy kept ($((sz / 1024)) MB): its installer keeps the old folder until the new one is in place\"\n"
+                   "    else\n"
+                   "    if [ \"$sz\" -le \"$cap\" ]; then snap=\"$SNAP/$id.dir\"; need=$sz; echo \"-- $id: safe copy in memory ($((sz / 1024)) MB)\"\n"
+                   "    else side=\"$(dirname \"$dir\")/.pm-safe-$id\"; snap=\"$side/${dir##*/}\"; copy=$(du -sk \"$dir\" 2>/dev/null | cut -f1); copy=${copy:-$sz}; need=$((2 * copy))\n"
+                   "      echo \"-- $id: safe copy on the drive ($((copy / 1024)) MB), MPC starts again when the update is done\"; fi\n"
+                   "    free=$(df -Pk \"$(dirname \"${side:-$snap}\")\" 2>/dev/null | awk 'NR==2 {print $4}')\n"
+                   "    if [ \"${free:-0}\" -lt $((need + 65536)) ]; then echo \"$id|fail|not enough free space to keep a safe copy\" >> \"$RES\"; return 1; fi\n"
+                   "    if [ -n \"$side\" ]; then\n"
+                   "      rm -rf \"$side.part\"; mkdir -p \"$side.part\" && cp -a \"$dir\" \"$side.part/\" &\n"
+                   "      cpid=$!; n=0; while kill -0 $cpid 2>/dev/null; do sleep 1; n=$((n + 1)); [ $((n %% 5)) -eq 0 ] && echo \"   $(du -sk \"$side.part\" 2>/dev/null | cut -f1) of $copy KB copied\"; done\n"
+                   "      wait $cpid && sync && mv \"$side.part\" \"$side\" || { rm -rf \"$side.part\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
+                   "    else cp -a \"$dir\" \"$snap\" || { rm -rf \"$snap\"; echo \"$id|fail|could not keep a safe copy\" >> \"$RES\"; return 1; }\n"
+                   "    fi\n"
+                   "    fi\n"
                    "  fi\n"
                    "  cp -p \"$SETTINGS\" \"$SNAP/$id.settings\" 2>/dev/null\n"
-                   "  out=$(\"$@\" 2>&1); rc=$?\n  pidof MPC >/dev/null && quiesce   # an installer without -n started MPC again: MPC starts once, at the end\n"
-                   "  if [ $rc -eq 0 ]; then echo \"$out\"; echo \"$id|ok|$act $ver\" >> \"$RES\"; [ -n \"$snap\" ] && rm -rf \"$snap\" \"$snap.done\"; rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
+                   "  out=$(\"$@\" 2>&1); rc=$?\n  pidof MPC >/dev/null && { quiesce; splash_start; }   # an installer without -n started MPC again: MPC starts once, at the end\n"
+                   /* the copy on the drive is renamed to .part before it is deleted: cut off half way through, it must not read as a whole one */
+                   "  if [ $rc -eq 0 ]; then echo \"$out\"; echo \"$id|ok|$act $ver\" >> \"$RES\"\n"
+                   "    if [ -n \"$side\" ]; then mv \"$side\" \"$side.part\"; rm -rf \"$side.part\" \"$side\"; elif [ -n \"$snap\" ]; then rm -rf \"$snap\"; fi\n"
+                   "    rm -f \"$SNAP/$id.settings\"; return 0; fi\n"
                    "  echo \"$out\"\n"
-                   /* roll back: the failed folder is moved aside (not deleted) until the safety copy is back in its place */
-                   "  if [ -n \"$snap\" ] && [ -f \"$snap.done\" ]; then\n"
-                   "    bad=\"$(dirname \"$dir\")/.pm-failed-$id\"; rm -rf \"$bad\"; [ -e \"$dir\" ] && mv \"$dir\" \"$bad\"\n"
-                   "    case $snap in \"$SNAP\"/*) cp -a \"$snap\" \"$dir\" ;; *) mv \"$snap\" \"$dir\" ;; esac\n"
-                   "    if [ $? -eq 0 ]; then rm -rf \"$bad\" \"$snap\" \"$snap.done\"\n"
-                   "    else rm -rf \"$dir\"; [ -e \"$bad\" ] && mv \"$bad\" \"$dir\"; echo \"-- $id: could not put the old folder back; the safety copy stays at $snap\"; fi\n"
+                   /* a removal with no copy: the folder stays as the uninstaller left it (never deleted here), MPC.settings goes back */
+                   "  if [ -n \"$nocopy\" ]; then [ -f \"$SNAP/$id.settings\" ] && cp -p \"$SNAP/$id.settings\" \"$SETTINGS\"\n"
+                   "    echo \"$id|fail|the removal stopped and " NO_SAFE_COPY ": $(echo \"$out\" | tail -n 1 | tr '|' ' ')\" >> \"$RES\"; echo \"-- $id failed: no safe copy to put back\"; return 1; fi\n"
+                   /* roll back: the failed folder is moved aside (not deleted) until the safety copy is back in its place. The copy on the
+                    * drive goes back by a rename, so a power cut here leaves a whole .pm-safe-<id> for heal */
+                   "  if [ -n \"$snap\" ] && [ -d \"$snap\" ]; then\n"
+                   "    bad=\"$(dirname \"$dir\")/.pm-failed-$id\"; rm -rf \"$bad\"\n"
+                   "    if [ -e \"$dir\" ] && ! mv \"$dir\" \"$bad\"; then echo \"-- $id: could not move the failed folder aside; the safety copy stays at ${side:-$snap}\"\n"
+                   "    elif if [ -n \"$side\" ]; then mv \"$snap\" \"$dir\"; else cp -a \"$snap\" \"$dir\"; fi; then\n"
+                   "      rm -rf \"$bad\"; if [ -n \"$side\" ]; then rmdir \"$side\"; else rm -rf \"$snap\"; fi\n"
+                   "    else rm -rf \"$dir\"; [ -e \"$bad\" ] && mv \"$bad\" \"$dir\"; echo \"-- $id: could not put the old folder back; the safety copy stays at ${side:-$snap}\"; fi\n"
+                   "  elif [ $keep = 1 ]; then   # nothing was copied: what is in place stays, the installer's leftovers go\n"
+                   "    p=$(dirname \"$dir\"); b=$(basename \"$dir\")\n"
+                   "    [ ! -d \"$dir\" ] && [ -d \"$p/.$b.old\" ] && mv \"$p/.$b.old\" \"$dir\"\n"
+                   "    rm -rf \"$p/.$b.new\"; [ -d \"$dir\" ] && rm -rf \"$p/.$b.old\"\n"
                    "  elif [ -n \"$dir\" ] && [ -z \"$snap\" ]; then rm -rf \"$dir\"   # a new install: nothing was there before\n"
                    "  fi\n"
                    "  [ -f \"$SNAP/$id.settings\" ] && cp -p \"$SNAP/$id.settings\" \"$SETTINGS\"\n"
-                   "  echo \"$id|fail|$(echo \"$out\" | tail -n 1 | tr '|' ' ')\" >> \"$RES\"; echo \"-- $id failed: rolled back\"; return 1\n}\n",
-                m->dev->state, m->dev->settings);
+                   "  kept=''; [ $keep = 1 ] && kept=' (its files in place were kept; MPC.settings was put back)'\n"
+                   "  echo \"$id|fail|$(echo \"$out\" | tail -n 1 | tr '|' ' ')$kept\" >> \"$RES\"; echo \"-- $id failed: rolled back$kept\"; return 1\n}\n",
+                m->dev->state, m->dev->settings, m->dev->base, nsteps);
+        {   /* the recovery script apply.sh runs first (and the Manager at start) */
+            FILE *v = fopen(WORK "/recover.sh", "w");
+            if (v) { fputs(RECOVER_SH, v); fclose(v); }
+            else err = "recover.sh could not be written";
+        }
+        {   /* the update screen: the plugins' names for its titles, and its program copied out of this plugin's folder (a self-update replaces
+             * that folder while it runs). Without it (an older zip, a build without the payload) apply.sh just runs without a screen. */
+            FILE *v = fopen(WORK "/names", "w");
+            if (v) { for (int k = 0; k < m->npkg; k++) fprintf(v, "%s\t%s\n", m->pkg[k].id, m->pkg[k].name); fclose(v); }
+            char src[320], cmd[900];
+            bg_src(m, src, sizeof src);
+            unlink(WORK "/splash");
+            if (*src && snprintf(cmd, sizeof cmd, "[ -f '%s/openmpc-pm-splash' ] && cp '%s/openmpc-pm-splash' '" WORK "/splash.new' && chmod 755 '" WORK "/splash.new' && "
+                                 "mv '" WORK "/splash.new' '" WORK "/splash'", src, src) < (int)sizeof cmd)
+                sh(cmd);
+        }
         if (m->dev->vst2) {   /* MPC OS 3.10.1: the folder copier / plugin.json writer (tools/vst2_migrate.sh), run while MPC is stopped */
             FILE *v = fopen(WORK "/vst2.sh", "w");
             if (v) { fputs(VST2_MIGRATE_SH, v); fclose(v); }
             else err = "vst2.sh could not be written";
         }
         if (!err && m->migrate)   /* first, so an update below finds (and upgrades) the VST2 copy with the user's files in it */
-            fprintf(f, "echo '-- move to VST2 Plugins'\nif sh '" WORK "/vst2.sh' --apply; then echo 'move-to-vst2|ok|move' >> \"$RES\"; "
+            fprintf(f, "echo '-- move to VST2 Plugins'\nprogress move '' ''\nif sh '" WORK "/vst2.sh' --apply; then echo 'move-to-vst2|ok|move' >> \"$RES\"; "
                        "else echo 'move-to-vst2|fail|not every plugin could be copied to VST2 Plugins (" WORK "/apply.log)' >> \"$RES\"; fi\n");
         if (!err && m->nregq) {   /* LOCATIONS: add each drive's Synths folder to MPC.settings (CRLF kept); item() snapshots the settings for a rollback */
             FILE *a = fopen(WORK "/loc_add.awk", "w");
@@ -3019,15 +3200,27 @@ static void prepare(mgr_t *m, pkg_t *q) {
                     if (strcmp(synths, m->dev->vdrv[k]) && safe(m->dev->vdrv[k])) fprintf(f, "rm -rf '%s%s'\n", m->dev->vdrv[k], fb);
             }
         }
-        if (theme_dirty(m)) {   /* MPC is stopped: copy the wanted skin over "Plugin Skins" (staged, then swapped; the old one goes last) */
+        if (m->theme_can && m->own[0] && safe(m->own)) {
+            /* MPC is stopped: copy the wanted skin over "Plugin Skins" (staged, then swapped; the old one goes last). Decided here, after the
+             * items, from the skin that is in place now: the Manager's own update has just brought the packaged (light) skin back, and a
+             * user who chose dark got light after every update until one more restart (FAQ, 2026-11). */
             const char *w = m->theme ? "light" : "dark";
-            fprintf(f, "echo '-- theme %s'\nT='%s'\nrm -rf \"$T/.skin.new\" \"$T/.skin.old\" && cp -a \"$T/Plugin Skins.%s\" \"$T/.skin.new\" && "
-                       "mv \"$T/Plugin Skins\" \"$T/.skin.old\" && mv \"$T/.skin.new\" \"$T/Plugin Skins\" && rm -rf \"$T/.skin.old\" && "
-                       "true\n", w, m->own, w);
+            /* journalled (recover.sh puts the skin back if this is cut off). NSTEP counted it only when the theme differed at APPLY: a
+             * self-update that brought the light skin back makes it one step more */
+            fprintf(f, "T='%s'; W=%s\n"
+                       "if [ -d \"$T/Plugin Skins.$W\" ] && [ \"$(cat \"$T/Plugin Skins/.theme\" 2>/dev/null || echo light)\" != \"$W\" ]; then\n"
+                       "  echo \"-- theme $W\"; [ $((STEP + 1)) -ge \"$NSTEP\" ] && NSTEP=$((NSTEP + 1))\n"
+                       "  progress theme '' ''; jot \"begin${TAB}theme$TAB$T${TAB}theme\"\n"
+                       "  rm -rf \"$T/.skin.new\" \"$T/.skin.old\" && cp -a \"$T/Plugin Skins.$W\" \"$T/.skin.new\" && "
+                       "mv \"$T/Plugin Skins\" \"$T/.skin.old\" && mv \"$T/.skin.new\" \"$T/Plugin Skins\" && rm -rf \"$T/.skin.old\"\n"
+                       "  jot \"end${TAB}theme\"\n"
+                       "fi\n", m->own, w);
         }
         /* MPC's skin image cache (a RAM disk only a reboot empties) grows ~400 MB per MPC start and, full, makes skins draw black (Live III, 2026-10-28).
          * MPC is stopped here, so nothing has the files open: empty it before MPC starts again, so the manager's own restarts do not fill it. */
         fprintf(f, "if ! pidof MPC >/dev/null; then rm -f /var/volatile/tmp/filmstrips/temp_*.img 2>/dev/null; echo '-- image cache emptied'; fi\n"
+                   "progress start '' ''; rm -f \"$J\"; sync\n"
+                   "[ -n \"$SPL\" ] && sleep 1; splash_stop   # \"Starting MPC\" stays on the screen until MPC draws its own\n"
                    "pidof MPC >/dev/null || systemctl start acvs\nrm -f \"$0\"\necho \"== done $(date)\"\n");
         fclose(f);
     }
@@ -3079,7 +3272,7 @@ static void do_launch(mgr_t *m) {
     say(m, OK, "Restarting MPC\xe2\x80\xa6 it will be back in a few seconds");
     logf_("launching apply.sh");
 #if defined(__arm__) || defined(__aarch64__)
-    if (launch_detached(m, WORK "/apply.sh")) say(m, ERR, "MPC could not be restarted. Nothing was changed.");
+    if (launch_detached(m, WORK "/apply.sh")) { logf_("launching apply.sh failed"); say(m, ERR, "MPC could not be restarted. Nothing was changed."); }
 #else
     (void)launch_detached;
     say(m, OK, "Dry run: apply.sh written");   /* host tests: never touch the build machine */
@@ -3093,7 +3286,20 @@ static void *worker(void *ud) {
     pthread_mutex_lock(&m->mu);
     m->job = J_REFRESH;
     for (;;) {
-        while (!m->quit && m->job == J_NONE) pthread_cond_wait(&m->cv, &m->mu);
+        while (!m->quit && m->job == J_NONE) {
+            if (!m->retry_at) { pthread_cond_wait(&m->cv, &m->mu); continue; }
+            long long left = m->retry_at - mono_ms();
+            if (left <= 0) {   /* due: only while nothing is queued or being answered, so a retry never pulls the list from under a choice */
+                m->retry_at = 0;
+                if (!m->online && !m->ready && !m->confirm && !count_queued(m)) m->job = J_REFRESH;
+                continue;
+            }
+            struct timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_sec += left / 1000; ts.tv_nsec += (left % 1000) * 1000000L;
+            if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+            pthread_cond_timedwait(&m->cv, &m->mu, &ts);
+        }
         if (m->quit) break;
         int job = m->job;
         m->job = J_NONE;
@@ -3206,6 +3412,19 @@ static char name_initial(const pkg_t *p) {   /* the A-Z filter's letter: the nam
     return c >= 'A' && c <= 'Z' ? c : '#';
 }
 
+/* A local zip's card for a plugin a catalog card already shows as installed (the same folder): INSTALLED lists the plugin once, by its
+ * catalog card. Left in, every zip kept in local-plugins doubled its plugin there, first in the list and with the zip's version rather
+ * than the installed one (a Live III showed "Plugin-Manager-G2-1.3.6" INSTALLED next to 2.0.0, 2026-11-22). A newer zip still shows
+ * under UPDATES, and a zip of a plugin the catalog does not have stays its only card. */
+static int local_twin(const mgr_t *m, const pkg_t *p) {
+    if (strncmp(p->id, "local-", 6) || !installed(p) || !p->folder[0]) return 0;
+    for (int i = 0; i < m->npkg; i++) {
+        const pkg_t *q = &m->pkg[i];
+        if (q != p && strncmp(q->id, "local-", 6) && installed(q) && !strcmp(q->folder, p->folder)) return 1;
+    }
+    return 0;
+}
+
 static int visible_now(const mgr_t *m, int *idx) {
     int n = 0;
     for (int i = 0; i < m->npkg; i++) {
@@ -3219,7 +3438,7 @@ static int visible_now(const mgr_t *m, int *idx) {
         if (m->tab == 0 && installed(p)) continue;   /* DISCOVER: what isn't on this MPC yet */
         if (m->tag[0] && !has_tag(p, m->tag)) continue;
         if (m->q[0] && !matches(p, m->q)) continue;
-        if (m->tab == 1 && !installed(p)) continue;
+        if (m->tab == 1 && (!installed(p) || local_twin(m, p))) continue;
         if (m->tab == 2 && !has_update(p)) continue;
         idx[n++] = i;
     }
@@ -3266,6 +3485,15 @@ static int count_updates(const mgr_t *m) {
 static int installs_queued(const mgr_t *m) {   /* a plugin or addin will be written to a drive */
     for (int i = 0; i < m->npkg; i++) if (m->pkg[i].queued == Q_INSTALL) return 1;
     return 0;
+}
+
+static int count_queued(const mgr_t *m);
+/* May APPLY run? Not with a device problem, except that "No install location" (every Synths folder full, read-only, noexec) only
+ * stops installs: a removal frees the space that turned installing off, and could not be applied (emulator, full drive, 2026-11). */
+static int can_apply(const mgr_t *m) {
+    if (!count_queued(m)) return 0;
+    if (!m->dev->problem[0]) return 1;
+    return !strcmp(m->dev->problem, "No install location") && !installs_queued(m);
 }
 
 static int count_queued(const mgr_t *m) {
@@ -3459,6 +3687,16 @@ static void post(mgr_t *m, int job) {   /* called with mu held */
     pthread_cond_signal(&m->cv);
 }
 
+/* The restart prompt's GO. post() drops a job while the worker is busy; with ready cleared first the press was lost without a word and
+ * the apply never ran. It stays ready, so the next press goes through. 1 when the launch was posted. Called with mu held. */
+static int post_launch(mgr_t *m) {
+    if (m->busy || m->job) { logf_("apply: GO while the worker is busy (busy=%d job=%d), still ready", m->busy, m->job); return 0; }
+    m->ready = 0;
+    post(m, J_LAUNCH);
+    logf_("apply: GO accepted");
+    return 1;
+}
+
 static void requeue(mgr_t *m, pkg_t *p, int q) {   /* any change to the queue drops a prepared or failed APPLY */
     p->queued = q;
     m->ready = m->failed = 0;
@@ -3530,6 +3768,12 @@ static int is_button(const char *key) {
     return 0;
 }
 
+/* The wheel moves the highlight only over the plain card list: not in the details, the keyboard, an open dropdown or card menu, the restart prompt,
+ * or while the manager prepares or restarts (those own the input; a turn there changes nothing) */
+static int wheel_ok(const mgr_t *m, int busy) {
+    return m->loaded && !m->detail[0] && !m->kb && !m->menu_open && m->menu < 0 && !m->confirm && !busy;
+}
+
 static void mgr_set_param(void *inst, const char *key, const char *val) {
     mgr_t *m = inst;
     double v = atof(val);
@@ -3568,7 +3812,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         else if (v >= 0.5 && !strcmp(key, "confirm_go")) {
             m->confirm = 0;
             if (m->dev->nusable > 1) target_save(m);   /* remember the place the user confirmed */
-            if (m->ready && !busy) { m->ready = 0; post(m, J_LAUNCH); }
+            if (m->ready && !busy && !post_launch(m)) say_locked(m, WARN, "Still busy: press APPLY again.");
         }
     } else if (v >= 0.5 && !strcmp(key, "search_btn")) {   /* the header's search button or search chip: type */
         m->kb = 1;
@@ -3597,11 +3841,42 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
             m->sel = idx[k];
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         } else if (k < nv && !strcmp(key + 4, "act") && !busy) act(m, idx[k], "act");
+    } else if (!strcmp(key, "wsel")) {   /* the data wheel (#11): move the highlight over the cards, across pages; ignored while anything else has the input */
+        int o = (int)(v + 0.5);
+        /* no cards (still loading, an empty filter, the wrapper's host test): an ordinary parameter, so the host's nudges read back */
+        if (!nv) { m->wsel_idle = o < 0 ? 0 : o > 1023 ? 1023 : o; m->wsel_on = 0; }
+        else if (wheel_ok(m, busy)) {
+            int f = o < 0 ? 0 : o > 2 * nv - 1 ? 2 * nv - 1 : o;   /* in half cards: two Q-Link ticks per card */
+            m->wsel = f / 2; m->wsel_half = f % 2;
+            m->wsel_on = nv > 0;
+            m->page = m->wsel / ROWS;
+            /* shown as the card selection (the tile's red outline, "card<r>_on", which the wrapper polls every 10 ms): a frame drawn
+             * from a when= picture sat under the cards and never showed (Live III, 2026-11-22) */
+            m->sel = idx[m->wsel];
+        }
+    } else if (!strcmp(key, "qpage")) {   /* Q-Link 2: the page, two ticks per page; the selection goes to the page's first card */
+        int o = (int)(v + 0.5);
+        if (!nv) m->qpage_idle = o < 0 ? 0 : o > 1023 ? 1023 : o;
+        else if (wheel_ok(m, busy)) {
+            int f = o < 0 ? 0 : o > 2 * pages - 1 ? 2 * pages - 1 : o;
+            m->qpage_half = f % 2;
+            if (f / 2 != m->page) {
+                m->page = f / 2; m->menu = -1;
+                m->wsel = m->page * ROWS; m->wsel_half = 0; m->wsel_on = 1; m->sel = idx[m->wsel];
+            }
+        }
+    } else if (v >= 0.5 && !strcmp(key, "wsel_open")) {   /* the wheel's press: the highlighted plugin's details, as a tap on its card */
+        if (wheel_ok(m, busy) && m->wsel_on && m->wsel < nv) {
+            m->sel = idx[m->wsel];
+            m->menu = -1;
+            snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[m->wsel]].id);
+        }
     } else if (!strcmp(key, "tab") || !strcmp(key, "kind") || !strcmp(key, "sort")) {   /* option params: the index as a number
                                                                                        * (and how the host restores them) */
         int o = (int)(v + 0.5);
         if (key[0] == 't') m->tab = o; else if (key[0] == 'k') m->kindf = o; else m->sort = o < 0 || o > 3 ? 0 : o;
         m->page = 0;
+        m->wsel = m->wsel_on = m->wsel_half = 0;
         m->menu = -1;
         m->menu_open = 0;
         if (key[0] != 's') m->detail[0] = 0;   /* the sort, restored with the project, leaves things be */
@@ -3610,6 +3885,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         int r = key[4] - '1', k = m->page * ROWS + r;
         if (m->loaded && !m->detail[0] && k >= 0 && k < nv) {
             m->sel = idx[k];
+            m->wsel = k; m->wsel_on = 1; m->wsel_half = 0;
             m->menu = -1;
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         }
@@ -3729,19 +4005,20 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
     } else if (key[0] == 'd' && key[1] == '_') {   /* d_act, d_more, d_reinstall, d_remove */
         int i = detail_of(m);
         if (i >= 0 && !busy) act(m, i, key + 2);
-    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; }   /* hidden by the details */
-    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; }
+    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; if (m->wsel_on) { m->wsel -= ROWS; m->wsel_half = 0; } }   /* hidden by the details */
+    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; if (m->wsel_on) { m->wsel = m->wsel + ROWS < nv ? m->wsel + ROWS : nv - 1; m->wsel_half = 0; } }   /* the highlight follows the page */
     else if (!strcmp(key, "refresh")) post(m, J_REFRESH);
     else if (!strcmp(key, "update_all") && !busy) {
         for (int i = 0; i < m->npkg; i++) if (has_update(&m->pkg[i]) && !m->pkg[i].queued) requeue(m, &m->pkg[i], Q_INSTALL);
     } else if (!strcmp(key, "apply") && !busy) {
         if (m->ready) m->confirm = 1;   /* restart only from the prompt */
-        else if (count_queued(m) && !m->dev->problem[0]) post(m, J_PREPARE);
+        else if (can_apply(m)) post(m, J_PREPARE);
     } else if (key[0] == 'r' && key[1] >= '1' && key[1] <= '0' + ROWS && key[2] == '_' && !m->detail[0]) {
         int k = m->page * ROWS + key[1] - '1';
         const char *f = key + 3;
         if (k < nv && !strcmp(f, "open")) {   /* the thumbnail */
             m->sel = idx[k];
+            m->wsel = k; m->wsel_on = 1; m->wsel_half = 0;
             m->menu = -1;
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         } else if (k < nv && !busy) act(m, idx[k], f);
@@ -3763,6 +4040,11 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
     int d = detail_of(m);
     if (d < 0) m->detail[0] = 0;   /* gone from the catalog on a refresh */
     if (!strcmp(key, "display_rev")) snprintf(b, n, "%u", m->rev);
+    else if (!strcmp(key, "wsel")) snprintf(b, n, "%d", !nv ? m->wsel_idle : m->wsel_on && m->wsel < nv ? 2 * m->wsel + m->wsel_half : 0);   /* the clamped value, in half cards: the host nudges from it */
+    else if (!strcmp(key, "qpage")) snprintf(b, n, "%d", !nv ? m->qpage_idle : 2 * m->page + m->qpage_half);
+    else if (!strcmp(key, "wsel_open")) snprintf(b, n, "0");
+    else if (!strncmp(key, "hl", 2) && key[2] >= '1' && key[2] <= '0' + ROWS && !key[3])   /* the highlight frame of card row N */
+        snprintf(b, n, "%d", m->wsel_on && !m->detail[0] && !m->kb && m->wsel < nv && m->wsel / ROWS == m->page && m->wsel % ROWS == key[2] - '1');
     else if (!strcmp(key, "tab")) snprintf(b, n, "%d", m->tab);
     else if (!strcmp(key, "kind")) snprintf(b, n, "%d", m->kindf);
     else if (!strcmp(key, "sort")) snprintf(b, n, "%d", m->sort);
@@ -3939,7 +4221,7 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
         snprintf(b, n, "%d", m->downloading ? 1 + (int)(m->progress * 19 + 0.5) : 0);
     else if (!strcmp(key, "upd_all")) snprintf(b, n, "%d", upd > 0 && !busy);
     else if (!strcmp(key, "apply_state"))   /* 0 off, 1 apply, 2 preparing, 3 ready (restart), 4 retry */
-        snprintf(b, n, "%d", busy ? 2 : m->ready ? 3 : m->failed && q ? 4 : q && !m->dev->problem[0] ? 1 : 0);
+        snprintf(b, n, "%d", busy ? 2 : m->ready ? 3 : m->failed && q && can_apply(m) ? 4 : can_apply(m) ? 1 : 0);
     else if (!strncmp(key, "card", 4) && key[4] >= '1' && key[4] <= '0' + ROWS) {   /* card<r>_1: the name, and its selection */
         int k = m->page * ROWS + key[4] - '1', i = k < nv && d < 0 ? idx[k] : -1;
         if (strstr(key, "_on")) snprintf(b, n, "%d", i >= 0 && i == m->sel);

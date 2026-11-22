@@ -372,12 +372,35 @@ int main(int argc, char **argv) {
     printf("after APPLY:\n"); cards();
     e->destroy(m); return 0;
   }
+  if (argc > 1 && !strcmp(argv[1], "wheel")) {   /* #11: the data wheel's highlight, its press, and who owns the input */
+    char hl[8];
+#define HL() (snprintf(hl, sizeof hl, "%s%s%s%s%s", get("hl1"), get("hl2"), get("hl3"), get("hl4"), get("hl5")), hl)
+    set("kind", "0");
+    printf("start: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    /* wsel counts half cards (two Q-Link ticks per card) */
+    set("wsel", "4"); printf("wsel 4: hl=%s wsel=%s\n", HL(), get("wsel"));
+    set("wsel", "5"); printf("wsel 5: hl=%s wsel=%s\n", HL(), get("wsel"));
+    set("wsel", "14"); printf("wsel 14: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("wsel", "9999"); printf("wsel 9999: wsel=%s page=%s\n", get("wsel"), get("page_txt"));
+    set("wsel", "-3"); printf("wsel -3: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("wsel", "6"); page("page_next", 0); printf("page_next: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("qpage", "0"); printf("qpage 0: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("qpage", "1"); printf("qpage 1: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("qpage", "4"); printf("qpage 4: hl=%s wsel=%s page=%s qpage=%s\n", HL(), get("wsel"), get("page_txt"), get("qpage"));
+    set("wsel", "2"); set("wsel_open", "1"); set("wsel_open", "0"); printf("press: view=%s hl=%s\n", get("view"), HL());
+    set("wsel", "8"); printf("in details: wsel=%s\n", get("wsel"));
+    press("d_back"); printf("back: view=%s hl=%s\n", get("view"), HL());
+    press("r4_open"); press("d_back"); printf("touch r4: hl=%s wsel=%s\n", HL(), get("wsel"));
+    set("az_btn", "1"); set("az_btn", "0"); set("wsel", "0"); printf("menu open: wsel=%s\n", get("wsel")); set("menu_close", "1"); set("menu_close", "0");
+    set("kind", "2"); printf("kind changed: hl=%s\n", HL());
+    e->destroy(m); return 0;
+  }
   if (argc > 1 && !strcmp(argv[1], "twin")) { set("kind", "2"); set("tab", "1"); printf("INSTALLED effects:\n"); cards(); e->destroy(m); return 0; }   /* #22 */
   if (argc > 1 && !strcmp(argv[1], "status")) { cards(); e->destroy(m); return 0; }   /* what the manager says on its own (the last apply) */
   if (argc > 2 && !strcmp(argv[1], "one")) {   /* queue the effect called argv[2] and APPLY: the prepare step's verdict */
     if (argc > 4) set("tab", argv[4]);
     set("kind", argc > 3 ? argv[3] : "2");
-    for (int p = 0, done = 0; p < 2 && !done; p++) {   /* the effects run to two pages now */
+    for (int p = 0, done = 0; p < 4 && !done; p++) {   /* the effects run to three pages now */
     for (int r = 1; r <= 5; r++) {
       char k[32];
       snprintf(k, sizeof k, "card%d_1", r);
