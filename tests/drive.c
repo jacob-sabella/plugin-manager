@@ -372,6 +372,24 @@ int main(int argc, char **argv) {
     printf("after APPLY:\n"); cards();
     e->destroy(m); return 0;
   }
+  if (argc > 1 && !strcmp(argv[1], "wheel")) {   /* #11: the data wheel's highlight, its press, and who owns the input */
+    char hl[8];
+#define HL() (snprintf(hl, sizeof hl, "%s%s%s%s%s", get("hl1"), get("hl2"), get("hl3"), get("hl4"), get("hl5")), hl)
+    set("kind", "0");
+    printf("start: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("wsel", "2"); printf("wsel 2: hl=%s wsel=%s\n", HL(), get("wsel"));
+    set("wsel", "7"); printf("wsel 7: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("wsel", "9999"); printf("wsel 9999: wsel=%s page=%s\n", get("wsel"), get("page_txt"));
+    set("wsel", "-3"); printf("wsel -3: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("wsel", "3"); page("page_next", 0); printf("page_next: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("wsel", "1"); set("wsel_open", "1"); set("wsel_open", "0"); printf("press: view=%s hl=%s\n", get("view"), HL());
+    set("wsel", "4"); printf("in details: wsel=%s\n", get("wsel"));
+    press("d_back"); printf("back: view=%s hl=%s\n", get("view"), HL());
+    press("r4_open"); press("d_back"); printf("touch r4: hl=%s wsel=%s\n", HL(), get("wsel"));
+    set("az_btn", "1"); set("az_btn", "0"); set("wsel", "0"); printf("menu open: wsel=%s\n", get("wsel")); set("menu_close", "1"); set("menu_close", "0");
+    set("kind", "2"); printf("kind changed: hl=%s\n", HL());
+    e->destroy(m); return 0;
+  }
   if (argc > 1 && !strcmp(argv[1], "twin")) { set("kind", "2"); set("tab", "1"); printf("INSTALLED effects:\n"); cards(); e->destroy(m); return 0; }   /* #22 */
   if (argc > 1 && !strcmp(argv[1], "status")) { cards(); e->destroy(m); return 0; }   /* what the manager says on its own (the last apply) */
   if (argc > 2 && !strcmp(argv[1], "one")) {   /* queue the effect called argv[2] and APPLY: the prepare step's verdict */

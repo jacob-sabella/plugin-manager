@@ -19,7 +19,7 @@ on:
 permissions:
   contents: read
 env:
-  TOOLS_REF: caee149e1177a9acce0b834a007fab486642add3
+  TOOLS_REF: 9eb3119d22f0c897313036e998a20da509fc048d   # open-mpc/mpc-vst-plugins#1089 (the 'wheel' layout kind); move to its merge commit once merged
 jobs:
   # A release of a commit whose push run already passed the tests reuses that result instead of testing again.
   tested:

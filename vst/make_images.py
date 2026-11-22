@@ -162,6 +162,8 @@ def main():
     for name, fill, edge in (("card_off.svg", PANEL, "#222326"), ("card_on.svg", "#1d1e21", RED)):
         svg(name, 1232, 80, '<rect x="1" y="1" width="1230" height="78" rx="10" fill="%s" stroke="%s" stroke-width="2"/>' % (fill, edge)
             + '<rect x="10" y="6" width="136" height="68" rx="6" fill="#24262a" stroke="#34363b"/>')
+    # the data wheel's highlight (#11): a frame over the card, no fill
+    svg("card_hl.svg", 1232, 80, '<rect x="2" y="2" width="1228" height="76" rx="10" fill="none" stroke="#f0b44a" stroke-width="4"/>')
     # the details (layout.conf "detail view"), over the card area and the space under it. What the details switch on
     # their own (picture, CPU and tested colours, What's new, tags) is baked over the page background, so the panel is
     # that colour too, outlined; the facts panel's labels; the picture's empty tile (d_shot "none")
