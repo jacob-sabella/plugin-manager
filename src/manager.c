@@ -142,7 +142,8 @@ typedef struct {
     char kb_key[16];              /* that key */
     int theme, theme_applied, theme_can;   /* 0 dark, 1 light: the one wanted, the one in `Plugin Skins` at MPC's start, and whether the folder holds both skins */
     char own[300];                /* this plugin's own folder (its skins live there) */
-    int wsel, wsel_on, wsel_idle;            /* the data wheel's highlighted card (a position in the visible list) and whether the wheel has been used (#11) */
+    int wsel, wsel_on, wsel_idle, wsel_half;   /* wsel_half: the Q-Links take two ticks per card (one felt touchy): the parameter counts half cards */
+    int qpage_idle, qpage_half;   /* Q-Link 2 (qpage): the page, two ticks per page */            /* the data wheel's highlighted card (a position in the visible list) and whether the wheel has been used (#11) */
     int theme_seen, theme_boot;   /* theme_init ran once; the wanted theme differed from the skin in place at that first start (an update brings the packaged skin) */
     int tsel, reprompt;           /* which usable location new installs go to; CHANGE re-prepares and reopens the prompt */
     int sort;                     /* 0 last updated, 1 newest (first release), 2 most downloaded, 3 name */
@@ -3845,12 +3846,24 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         /* no cards (still loading, an empty filter, the wrapper's host test): an ordinary parameter, so the host's nudges read back */
         if (!nv) { m->wsel_idle = o < 0 ? 0 : o > 1023 ? 1023 : o; m->wsel_on = 0; }
         else if (wheel_ok(m, busy)) {
-            m->wsel = o < 0 ? 0 : o >= nv ? nv - 1 : o;
+            int f = o < 0 ? 0 : o > 2 * nv - 1 ? 2 * nv - 1 : o;   /* in half cards: two Q-Link ticks per card */
+            m->wsel = f / 2; m->wsel_half = f % 2;
             m->wsel_on = nv > 0;
             m->page = m->wsel / ROWS;
             /* shown as the card selection (the tile's red outline, "card<r>_on", which the wrapper polls every 10 ms): a frame drawn
              * from a when= picture sat under the cards and never showed (Live III, 2026-11-22) */
             m->sel = idx[m->wsel];
+        }
+    } else if (!strcmp(key, "qpage")) {   /* Q-Link 2: the page, two ticks per page; the selection goes to the page's first card */
+        int o = (int)(v + 0.5);
+        if (!nv) m->qpage_idle = o < 0 ? 0 : o > 1023 ? 1023 : o;
+        else if (wheel_ok(m, busy)) {
+            int f = o < 0 ? 0 : o > 2 * pages - 1 ? 2 * pages - 1 : o;
+            m->qpage_half = f % 2;
+            if (f / 2 != m->page) {
+                m->page = f / 2; m->menu = -1;
+                m->wsel = m->page * ROWS; m->wsel_half = 0; m->wsel_on = 1; m->sel = idx[m->wsel];
+            }
         }
     } else if (v >= 0.5 && !strcmp(key, "wsel_open")) {   /* the wheel's press: the highlighted plugin's details, as a tap on its card */
         if (wheel_ok(m, busy) && m->wsel_on && m->wsel < nv) {
@@ -3863,7 +3876,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         int o = (int)(v + 0.5);
         if (key[0] == 't') m->tab = o; else if (key[0] == 'k') m->kindf = o; else m->sort = o < 0 || o > 3 ? 0 : o;
         m->page = 0;
-        m->wsel = m->wsel_on = 0;
+        m->wsel = m->wsel_on = m->wsel_half = 0;
         m->menu = -1;
         m->menu_open = 0;
         if (key[0] != 's') m->detail[0] = 0;   /* the sort, restored with the project, leaves things be */
@@ -3872,7 +3885,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         int r = key[4] - '1', k = m->page * ROWS + r;
         if (m->loaded && !m->detail[0] && k >= 0 && k < nv) {
             m->sel = idx[k];
-            m->wsel = k; m->wsel_on = 1;
+            m->wsel = k; m->wsel_on = 1; m->wsel_half = 0;
             m->menu = -1;
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         }
@@ -3992,8 +4005,8 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
     } else if (key[0] == 'd' && key[1] == '_') {   /* d_act, d_more, d_reinstall, d_remove */
         int i = detail_of(m);
         if (i >= 0 && !busy) act(m, i, key + 2);
-    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; if (m->wsel_on) m->wsel -= ROWS; }   /* hidden by the details */
-    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; if (m->wsel_on) m->wsel = m->wsel + ROWS < nv ? m->wsel + ROWS : nv - 1; }   /* the highlight follows the page */
+    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; if (m->wsel_on) { m->wsel -= ROWS; m->wsel_half = 0; } }   /* hidden by the details */
+    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; if (m->wsel_on) { m->wsel = m->wsel + ROWS < nv ? m->wsel + ROWS : nv - 1; m->wsel_half = 0; } }   /* the highlight follows the page */
     else if (!strcmp(key, "refresh")) post(m, J_REFRESH);
     else if (!strcmp(key, "update_all") && !busy) {
         for (int i = 0; i < m->npkg; i++) if (has_update(&m->pkg[i]) && !m->pkg[i].queued) requeue(m, &m->pkg[i], Q_INSTALL);
@@ -4005,7 +4018,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         const char *f = key + 3;
         if (k < nv && !strcmp(f, "open")) {   /* the thumbnail */
             m->sel = idx[k];
-            m->wsel = k; m->wsel_on = 1;
+            m->wsel = k; m->wsel_on = 1; m->wsel_half = 0;
             m->menu = -1;
             snprintf(m->detail, sizeof m->detail, "%s", m->pkg[idx[k]].id);
         } else if (k < nv && !busy) act(m, idx[k], f);
@@ -4027,7 +4040,8 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
     int d = detail_of(m);
     if (d < 0) m->detail[0] = 0;   /* gone from the catalog on a refresh */
     if (!strcmp(key, "display_rev")) snprintf(b, n, "%u", m->rev);
-    else if (!strcmp(key, "wsel")) snprintf(b, n, "%d", !nv ? m->wsel_idle : m->wsel_on && m->wsel < nv ? m->wsel : 0);   /* the clamped value: the host nudges from it */
+    else if (!strcmp(key, "wsel")) snprintf(b, n, "%d", !nv ? m->wsel_idle : m->wsel_on && m->wsel < nv ? 2 * m->wsel + m->wsel_half : 0);   /* the clamped value, in half cards: the host nudges from it */
+    else if (!strcmp(key, "qpage")) snprintf(b, n, "%d", !nv ? m->qpage_idle : 2 * m->page + m->qpage_half);
     else if (!strcmp(key, "wsel_open")) snprintf(b, n, "0");
     else if (!strncmp(key, "hl", 2) && key[2] >= '1' && key[2] <= '0' + ROWS && !key[3])   /* the highlight frame of card row N */
         snprintf(b, n, "%d", m->wsel_on && !m->detail[0] && !m->kb && m->wsel < nv && m->wsel / ROWS == m->page && m->wsel % ROWS == key[2] - '1');

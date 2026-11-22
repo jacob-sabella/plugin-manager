@@ -4992,6 +4992,16 @@
     "off",
     "on"
    ]
+  },
+  {
+   "key": "qpage",
+   "automatable": false,
+   "name": "Page (Q-Link)",
+   "min": 0,
+   "max": 1023,
+   "default": 0,
+   "display": "int",
+   "nudge_pct": 10
   }
  ]
 }

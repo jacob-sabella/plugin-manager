@@ -377,13 +377,18 @@ int main(int argc, char **argv) {
 #define HL() (snprintf(hl, sizeof hl, "%s%s%s%s%s", get("hl1"), get("hl2"), get("hl3"), get("hl4"), get("hl5")), hl)
     set("kind", "0");
     printf("start: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
-    set("wsel", "2"); printf("wsel 2: hl=%s wsel=%s\n", HL(), get("wsel"));
-    set("wsel", "7"); printf("wsel 7: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    /* wsel counts half cards (two Q-Link ticks per card) */
+    set("wsel", "4"); printf("wsel 4: hl=%s wsel=%s\n", HL(), get("wsel"));
+    set("wsel", "5"); printf("wsel 5: hl=%s wsel=%s\n", HL(), get("wsel"));
+    set("wsel", "14"); printf("wsel 14: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
     set("wsel", "9999"); printf("wsel 9999: wsel=%s page=%s\n", get("wsel"), get("page_txt"));
     set("wsel", "-3"); printf("wsel -3: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
-    set("wsel", "3"); page("page_next", 0); printf("page_next: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
-    set("wsel", "1"); set("wsel_open", "1"); set("wsel_open", "0"); printf("press: view=%s hl=%s\n", get("view"), HL());
-    set("wsel", "4"); printf("in details: wsel=%s\n", get("wsel"));
+    set("wsel", "6"); page("page_next", 0); printf("page_next: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("qpage", "0"); printf("qpage 0: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("qpage", "1"); printf("qpage 1: hl=%s wsel=%s page=%s\n", HL(), get("wsel"), get("page_txt"));
+    set("qpage", "4"); printf("qpage 4: hl=%s wsel=%s page=%s qpage=%s\n", HL(), get("wsel"), get("page_txt"), get("qpage"));
+    set("wsel", "2"); set("wsel_open", "1"); set("wsel_open", "0"); printf("press: view=%s hl=%s\n", get("view"), HL());
+    set("wsel", "8"); printf("in details: wsel=%s\n", get("wsel"));
     press("d_back"); printf("back: view=%s hl=%s\n", get("view"), HL());
     press("r4_open"); press("d_back"); printf("touch r4: hl=%s wsel=%s\n", HL(), get("wsel"));
     set("az_btn", "1"); set("az_btn", "0"); set("wsel", "0"); printf("menu open: wsel=%s\n", get("wsel")); set("menu_close", "1"); set("menu_close", "0");
