@@ -194,7 +194,14 @@ whole original application, releases 1.0.1, 1.1.0 and 1.2.0, the card screenshot
 project would not exist. The upstream README and testing guide are kept in `docs/UPSTREAM_README.md` and `docs/UPSTREAM_TESTING.md`.
 
 **jacob-sabella:** addin support for the manager (poloq PR #1: the catalog's `addin` kind, installed under `/data/mpc-addins/<id>` and removed with
-its own `uninstall.sh`), the offline addin test fixture, the Key 37 test pass, and the Instruments-browser tile and default preset.
+its own `uninstall.sh`), the offline addin test fixture, the Key 37 test pass, and the Instruments-browser tile and default preset. For 2.0,
+reliability fixes found by running the Manager inside real MPC firmware under [QEngine](https://github.com/Peyton-C/QEngine)
+([mpc-compat-tests](https://github.com/jacob-sabella/mpc-compat-tests); #49): MPC OS 3.10.1 install locations (no installs to the data
+partition on a unit with a content drive, an attached drive when no internal one can take plugins), full drives and removals that are never
+refused for want of room, an interrupted update that no longer blocks later ones, the APPLY press kept while the worker is busy, one press per
+touch however long it is held, the catalog retried when it cannot be reached, a read-only addins folder refused up front, the theme kept through
+the Manager's own update, and the offline tests on a frozen catalog snapshot; and the matching installer and desktop-app fixes in
+open-mpc/mpc-vst-plugins#1079.
 
 **Eurikon** ([plugin-manager-usb-for-open-mpc](https://github.com/Eurikon/plugin-manager-usb-for-open-mpc), MIT, Twisted Cable): ideas, not code.
 Refusing to install without a listed content location, snapshot-and-restore around an apply, and a history file came from reading that tool.
