@@ -45,7 +45,6 @@ def layout_rows():
         b(1094, c, k + "reinstall", "btn_reinstall.svg", 76, 48, k + "state:menu")
         b(1172, c, k + "remove", "btn_remove.svg", 76, 48, k + "state:menu")
         b(1236, c, k + "more", "more.svg", 44, 48, k + "inst:yes")
-        out.append('art file=images/card_hl.svg x=24 y=%d w=1232 h=%d when=hl%d:on' % (t, H, r))   # the data wheel's highlight (#11)
     return out
 
 

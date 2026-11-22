@@ -3848,6 +3848,9 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
             m->wsel = o < 0 ? 0 : o >= nv ? nv - 1 : o;
             m->wsel_on = nv > 0;
             m->page = m->wsel / ROWS;
+            /* shown as the card selection (the tile's red outline, "card<r>_on", which the wrapper polls every 10 ms): a frame drawn
+             * from a when= picture sat under the cards and never showed (Live III, 2026-11-22) */
+            m->sel = idx[m->wsel];
         }
     } else if (v >= 0.5 && !strcmp(key, "wsel_open")) {   /* the wheel's press: the highlighted plugin's details, as a tap on its card */
         if (wheel_ok(m, busy) && m->wsel_on && m->wsel < nv) {

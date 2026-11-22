@@ -13,6 +13,7 @@ MV="${MPC_VST:-$here/../..}"
 python3 "$MV/tools/gen_vst.py" "$here/vst/vst.json" --params-h >/dev/null
 MPC_VST="$MV" python3 "$here/tests/fixture.py"
 python3 "$here/vst/skin_taps.py" --selftest   # the skin edit that makes a trigger answer a touch once
+python3 "$here/vst/skin_wheel.py" --selftest   # the skin edit that keeps the data wheel on the card list
 # an internal network: the container has an address (the web page tests read it) and no route out
 NET=pm-tests-offline
 docker network inspect $NET >/dev/null 2>&1 || docker network create --internal $NET >/dev/null
