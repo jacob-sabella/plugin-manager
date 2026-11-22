@@ -15,6 +15,17 @@ models, MPC OS 3.x), with a safety net: if an install fails, the plugin folder a
 
 > **Any plugin, however it was built.** The Plugin Manager is part of Open MPC, the delivery side: it installs, updates and removes catalog plugins on MPC OS 3.9.1 and 3.10.1+, including plugins built with Akai's MPC Plugin SDK. Building a plugin is the SDK's job (or the mpc-vst-plugins wrapper's).
 
+## New in 2.0
+
+- **Progress on the MPC's own screen.** While MPC is stopped for an apply, the screen shows what is happening ("Installing Model-72 1.0.0", step 2 of 5, a moving bar, "Don't switch the MPC off") instead of going dark, then "Starting MPC". The web page shows the same step.
+- **Safe if the power goes.** Each step is written to a journal on the settings drive. If the MPC is switched off mid-update, the next start finishes or undoes that step (the plugin folder in place is kept, or the copy from before goes back) and says once what happened.
+- **Big plugins update fast.** A large plugin whose installer stages its new version beside the old one is no longer copied first, which took minutes on an SD card with the screen dark. Sizes are read from the files, not the drive, so exFAT cards with big clusters no longer look ten times fuller.
+- **Full drives.** A removal is never refused for lack of room (it is how you make room), the banner says "Drive full" in plain words, and on MPC OS 3.10.1 plugins go to an attached drive when no internal one can take them.
+- **Q-Links browse the list.** On the PLUGINS page Q-Link 1 scrolls the cards and Q-Link 2 turns pages, two ticks per step; the selected card is outlined. (The data wheel is not wired up yet.)
+- **Smaller fixes.** A held button press counts once; the APPLY press is not lost while the manager is busy; the catalog is fetched again on its own if Wi-Fi was not up yet; the theme you chose survives the manager's own update; INSTALLED lists each plugin once even with its zip in `local-plugins`; 44 new thumbnails.
+
+Many of the reliability fixes come from jacob-sabella, found by running the manager inside real MPC firmware under emulation (see [Credits](#credits)).
+
 ## Built on poloq's work
 
 **This manager exists because of [poloq](https://github.com/poloq-instruments)'s
@@ -40,6 +51,8 @@ the project's development**: the catalog, its release rules and the official way
   Most downloaded, Name).
 - Five plugins per page, each with a thumbnail, its version, a Stable or Beta badge, a *High CPU* warning when the catalog measured one, an *Old
   install* badge, and **Tested: <device>** when someone ran it on that hardware. Tap a card for its details page.
+- **Q-Links (2.0):** on the PLUGINS page Q-Link 1 moves the selection over the cards (two ticks per card, across pages) and Q-Link 2 turns
+  pages (two ticks per page, the selection to the page's first card).
 - Shows only what your device can install: each catalog version lists a zip per architecture, and the manager takes the one for your MPC (`aarch64` on Gen2, `armv7` on Gen1).
 
 **Install, update, remove**
@@ -73,7 +86,13 @@ the project's development**: the catalog, its release rules and the official way
 - Before MPC is stopped, each package's SHA-256 is checked against the catalog, the zip is inspected (no absolute or `..` paths), and its manifest
   must match the device (architecture, glibc, MPC OS). A package that needs symbolic links is refused on a drive that cannot store them (exFAT).
 - **Rollback:** every install, update or removal snapshots the plugin folder and `MPC.settings` first; on failure both are restored. After the
-  restart the status line says, for example, *Last apply: 0 done, 1 failed and put back as they were. <name>: <reason>*.
+  restart the status line says, for example, *Last apply: 0 done, 1 failed and put back as they were. <name>: <reason>*. A big folder whose
+  installer stages its own copy, or a removal with no room for a copy, is not copied; then `MPC.settings` goes back and the message says if the
+  folder could not be (2.0).
+- **Power cuts (2.0):** the apply keeps a journal on the settings drive; an apply that was cut off is finished or undone at the next start
+  (`src/recover.sh`), and the status line says *The last update did not finish* once.
+- **Update screen (2.0):** while MPC is stopped, the MPC's own screen shows the step in progress (`src/splash.c`; through Akai's splash on
+  Gen2). It lets go of the display before MPC starts.
 - It keeps the newest 10 `MPC.settings.bak-*` backups, a small history file of what was installed or removed, and warns when MPC's image cache
   (a RAM disk) is nearly full, because a full cache makes parts of any skin draw black.
 
@@ -91,13 +110,15 @@ the project's development**: the catalog, its release rules and the official way
 - **Light and dark theme** (the THEME pill; applied at the next restart, because MPC keeps skins in memory). Light is the default.
 - **Local zips:** put a package zip in `local-plugins/` next to a content location's parent (for example `/nvme/local-plugins/`) and it appears as a
   card marked *by local zip*, with its own SHA-256 shown. Nothing vouches for it, so the usual checks still apply. Works with no network (0.2.3).
+  Once that plugin is installed, INSTALLED lists it once, by its catalog card; a newer zip shows under UPDATES (2.0).
 - **Register folders MPC does not list:** a plugin folder (with its `plugin-meta.xml`) copied by hand, or dropped from the list, appears in
   *Installed* with a **REGISTER** button that adds its entry to the plugin list.
 
 ## How to use it
 
 **Install the manager** (once). Download `Plugin-Manager-G2-<version>-mpc-aarch64.zip` from the
-[releases](https://github.com/open-mpc/mpc-vst-plugins/releases) (tag `plugin-manager-g2-v<version>`), unzip it, copy the folder to the device and run
+[releases](https://github.com/open-mpc/plugin-manager/releases) (tag `plugin-manager-g2-v<version>`; 1.1.0 and older are in
+[open-mpc/mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins/releases)), unzip it, copy the folder to the device and run
 the installer as root, naming your Synths folder (`INSTALL.md` in the zip explains how to find it: `/nvme/Synths` on a Live III,
 `/storage/Synths` on an MPC One):
 
