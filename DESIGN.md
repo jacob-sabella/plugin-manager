@@ -356,3 +356,48 @@ On the PLUGINS page Q-Link 1 scrolls the cards (`wsel`, counted in half cards so
 Unknowns to check on a Live II/III: initial focus, touch/wheel switching, that the host nudges from the value `get_param("wsel")` returns,
 and that a wheel turn is not also delivered twice. Second feature, not started: pressing the focused screenshot in the details opens a larger image.
 Future (not started): filtering by the catalog's existing tags, for example hiding plugins that need the user's own files/ROMs (`requires_user_files`).
+
+## The Manager in an MPC mode slot (2026-11-22, Live III device-tested; branch claude/pm-mode-page)
+The Mode Slot addin (mpc-vst-plugins `tools/mpc_patch/modeslot`) turns MPC's unused mode 0x2090 into an "Open MPC" MENU
+tile whose page an outside process draws: it shows `/run/openmpc-page/frame.png` and sends touches on
+`/run/openmpc-page/input.sock` (`enter`, `size W H`, `down/drag/up X Y`, `leave`). On a Live III the page is the whole
+screen, 1280×800. The background daemon serves that page (`src/page.c`, started by `page_start` in `src/daemon.c`;
+`PM_PAGE=0` turns it off), so the Manager opens from MENU without loading the plugin.
+- **What it draws.** The skin itself, as MPC would: `vst/gen_page.py` compiles every tab of the built skin and
+  `params.json` into `openmpc_page.txt` (in each `Plugin Skins*` folder, made by `vst/build_themes.sh`), and the page
+  draws its images, buttons and live value text from the daemon's engine. Text is Titillium Web (OFL), shipped in
+  `bgserver/`; labels fit their box as a JUCE Label's do. Taps set parameters as MPC does (momentary "1" then "0",
+  options by index).
+- **The taller page.** The skin is 1280×628. With 62 px or more to spare (690 px and up) the page draws its own tab
+  bar along the bottom (with less, only the first tab, PLUGINS, can be shown) (MPC's six 213 px slots), and the rest of the height goes to PLUGINS: one more card row per 84 px
+  (copies of the last row on `r6_`/`card6_` parameters; the daemon's own engine instance is told `rows=6`, the plugin's
+  stays at 5), the rest shared between the rows, the footer moved to the bottom, full-page pictures cut at the footer.
+- **Offline check.** `tests/page_test.c` renders it: `PAGE_H=800 page_test <skin dir> <font dir> out.png [key=value ...]
+  [tap=X,Y] [tab=N]`.
+- **Still to do.** Pages that open from a card (the details) and the keyboard are drawn as the skin has them but
+  are untested in the slot; the Q-Links and the data wheel do nothing there.
+
+## The Plugin Manager app (an addin; 2026-11-23, device-tested on the Live III including a reboot)
+The whole Manager without the plugin, for people who want it as a MENU mode rather than a track plugin: one addin,
+`Plugin-Manager-App-<version>-mpc-aarch64.zip` (`modeslot/package_app.sh`, id `pm-app`, about 12 MB). It holds the mode slot
+(`modeslot.so`), its own copy of the daemon (engine, web page on :8790, the slot's page), the skin as one tar, the fonts and
+`pm-app-start.sh`.
+- **Start.** MPC loads the addin at its start; the shim then runs `pm-app-start.sh` (detached). The script unpacks the skin
+  into `/run/openmpc-pm-app` (once per boot, or after an update) and starts the daemon in the background-server unit
+  (`openmpc-pm-daemon`). No device script, no signing.
+- **One daemon.** The plugin's background server uses the same unit, port and work folder. The app wins: its script stops
+  another daemon in the unit, the plugin (2.1.0 and later) does not heal or install its own while `/data/mpc-addins/pm-app`
+  is there, and SETTINGS says the app runs the server. An older plugin with its server on would put its own daemon back when
+  loaded.
+- **Reboots.** Like every addin on MPC OS 3.10, it needs Addin Restore to load again after a reboot. The catalog can't yet
+  make an addin install a patch (`also_installs` is between patches; addin `depends` names plugins and addins), so INSTALL.md
+  says so. To do: let an addin's catalog entry install a patch first (engine + catalog), then list the app with Addin
+  Restore as a dependency.
+- **Catalog.** Listed in the add-in section as an alternative to the plugin; it conflicts with the Mode Slot addin (the same
+  slot), which stays for other apps that want to draw the page.
+- **Limits.** MPC OS 3.10.1 on Gen2, Gen1 MPC and Force (the shim has one firmware profile per build, found offline: modeslot/README.md);
+  other builds are refused and the app then runs without a tile (its web page still works). One skin (light), so no theme switch.
+- **Gen1 and Force.** The same app for 32-bit ARM (`package_app.sh ... armv7`): the 32-bit shim, the armv7 daemon and splash. The
+  app runs in its own unit (`openmpc-pm-app`) and stops the plugin's server (`openmpc-pm-daemon`, a persistent unit on Gen1 and
+  Force); the daemon exits by itself when its binary is removed (the uninstaller) or replaced (an update). Tested under qemu and in
+  the compat emulator; not on a device yet.
