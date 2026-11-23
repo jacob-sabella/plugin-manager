@@ -75,11 +75,12 @@ typedef struct {
 #endif
 /* The version of this build, shown on the ABOUT page. The release workflow fails when its version input differs from this. */
 #ifndef PM_VERSION
-#define PM_VERSION "2.0.0"
+#define PM_VERSION "2.1.0"
 #endif
 #define WORK "/tmp/openmpc-pm"
 #define MAXPKG 1024   /* cards kept: the catalog (272 plugins on 2026-11-17), then local zips and unregistered folders; what does not fit is logged */
-#define ROWS 5      /* plugin cards per page */
+#define ROWS_DEFAULT 5   /* plugin cards per page: the plugin's screen; the mode-slot page (page.c) can ask for up to 9 ("rows") */
+#define ROWS_MAX 9
 #ifndef ADDINS_DIR
 #define ADDINS_DIR "/data/mpc-addins"   /* one folder per addin id, as mpc-vst-plugins' addin installer lays them out */
 #endif
@@ -171,6 +172,7 @@ typedef struct {
     int bg_on, bg_run, bg_avail;    /* SETTINGS: the always-on background server — installed (device script + binary present); its daemon running; and whether this build ships the payload (aarch64/Gen2) */
     char regq[4][200]; int nregq;   /* LOCATIONS: drives queued for REGISTER (a Synths folder to add to MPC.settings at APPLY) */
     locrow_t locs[16]; int nlocs, locpage;   /* LOCATIONS rows (built by the worker on each refresh), the page shown (4 per page) */
+    int rows;                       /* plugin cards per page (ROWS_DEFAULT; the daemon's mode-slot page sets "rows") */
 } mgr_t;
 
 /* ---- small helpers ---- */
@@ -1387,6 +1389,38 @@ static void show_patch_result(mgr_t *m) {   /* called with m->mu held, after pat
 /* Before APPLY of a patch with also_installs on this CPU: check each named patch and install or update it (`install --confirmed`, while
  * MPC still runs: they never restart it), so the main patch never goes on without it. 0 when all are in place; else the status line
  * says why and the main patch is not run. Their cards show the new state. */
+static int ensure_patch(mgr_t *m, const patch_t *c, const char *forwhat) {   /* one named patch in place (installed or updated), 0 when it is */
+    char file[300], log[300], state[24] = "error", reason[100] = "";
+    int sup = 0;
+    snprintf(file, sizeof file, WORK "/patch-%s.sh", c->id);
+    snprintf(log, sizeof log, WORK "/patch-%s.log", c->id);
+    const char *why = patch_script(m, c, file);
+    if (why) { say(m, ERR, "%s needs \"%s\": %s. Nothing was changed.", forwhat, c->title, why); return -1; }
+    patch_status(m, c, file, state, sizeof state, &sup, reason, sizeof reason);
+    if (strcmp(state, "patched")) {
+        if (!sup || (strcmp(state, "stock") && strcmp(state, "old-patch"))) {
+            unlink(file); patch_store(m, c->id, state, sup, reason);
+            say(m, ERR, "%s needs \"%s\", which this MPC cannot take (%s). Nothing was changed.", forwhat, c->title, reason[0] ? reason : state);
+            return -1;
+        }
+        say(m, OK, "Installing \"%s\" first (%s needs it)\xe2\x80\xa6", c->title, forwhat);
+        int rc = patch_run(file, "install", "--confirmed", 180, WORK "/patch-out.txt");
+        char *out = slurp(WORK "/patch-out.txt", 16384);
+        if (out) { FILE *lf = fopen(log, "w"); if (lf) { fputs(out, lf); fclose(lf); } free(out); }
+        unlink(WORK "/patch-out.txt");
+        patch_status(m, c, file, state, sizeof state, &sup, reason, sizeof reason);
+        logf_("patch %s (for %s) install: exit %d, now %s", c->id, forwhat, rc, state);
+    }
+    unlink(file);
+    patch_store(m, c->id, state, sup, reason);
+    if (strcmp(state, "patched")) {
+        say(m, ERR, "%s needs \"%s\", and installing it did not finish (now %s; log " WORK "/patch-%s.log). %s was not applied.", forwhat,
+            c->title, state, c->id, forwhat);
+        return -1;
+    }
+    return 0;
+}
+
 static int companions_first(mgr_t *m, const patch_t *p) {
     int idx[4];
     pthread_mutex_lock(&m->mu);
@@ -1395,37 +1429,28 @@ static int companions_first(mgr_t *m, const patch_t *p) {
     for (int i = 0; i < n; i++) c[i] = m->pt[idx[i]];
     pthread_mutex_unlock(&m->mu);
     if (n < 0) { say(m, ERR, "%s: a patch it needs on this MPC is missing from the list. Nothing was changed.", p->title); return -1; }
-    for (int i = 0; i < n; i++) {
-        char file[300], log[300], state[24] = "error", reason[100] = "";
-        int sup = 0;
-        snprintf(file, sizeof file, WORK "/patch-%s.sh", c[i].id);
-        snprintf(log, sizeof log, WORK "/patch-%s.log", c[i].id);
-        const char *why = patch_script(m, &c[i], file);
-        if (why) { say(m, ERR, "%s needs \"%s\": %s. Nothing was changed.", p->title, c[i].title, why); return -1; }
-        patch_status(m, &c[i], file, state, sizeof state, &sup, reason, sizeof reason);
-        if (strcmp(state, "patched")) {
-            if (!sup || (strcmp(state, "stock") && strcmp(state, "old-patch"))) {
-                unlink(file); patch_store(m, c[i].id, state, sup, reason);
-                say(m, ERR, "%s needs \"%s\", which this MPC cannot take (%s). Nothing was changed.", p->title, c[i].title, reason[0] ? reason : state);
-                return -1;
-            }
-            say(m, OK, "Installing \"%s\" first (%s needs it)\xe2\x80\xa6", c[i].title, p->title);
-            int rc = patch_run(file, "install", "--confirmed", 180, WORK "/patch-out.txt");
-            char *out = slurp(WORK "/patch-out.txt", 16384);
-            if (out) { FILE *lf = fopen(log, "w"); if (lf) { fputs(out, lf); fclose(lf); } free(out); }
-            unlink(WORK "/patch-out.txt");
-            patch_status(m, &c[i], file, state, sizeof state, &sup, reason, sizeof reason);
-            logf_("patch %s (for %s) install: exit %d, now %s", c[i].id, p->id, rc, state);
-        }
-        unlink(file);
-        patch_store(m, c[i].id, state, sup, reason);
-        if (strcmp(state, "patched")) {
-            say(m, ERR, "%s needs \"%s\", and installing it did not finish (now %s; log " WORK "/patch-%s.log). %s was not applied.", p->title,
-                c[i].title, state, c[i].id, p->title);
-            return -1;
-        }
-    }
+    for (int i = 0; i < n; i++)
+        if (ensure_patch(m, &c[i], p->title)) return -1;
     return 0;
+}
+
+/* An addin queued to install on a Gen2 MPC (MPC OS 3.10: its LD_PRELOAD drop-in sits in /run and is gone after a reboot) needs the Addin
+ * Restore patch, or it silently stops loading at the next boot. Installed first, like a patch's also_installs, while MPC still runs (it
+ * never restarts MPC). 0 to go on. Not being able to install it does not stop the addin: the user is told it will not survive a reboot. */
+static void addin_restore_first(mgr_t *m, const pkg_t *q, int nq) {
+    int want = 0;
+    for (int i = 0; i < nq; i++) if (is_addin(&q[i]) && q[i].queued == Q_INSTALL) want = 1;
+    if (!want || !want_asset()) return;   /* want_asset(): an aarch64 (Gen2) MPC; PM_ARCH lets the tests pretend */
+    patch_t c = {0};
+    int found = 0;
+    if (!m->npt) patches_load(m);   /* the list loads on each refresh; this is for one that has not run yet */
+    pthread_mutex_lock(&m->mu);
+    for (int k = 0; k < m->npt; k++)
+        if (!strcmp(m->pt[k].id, "addin-restore") && !m->pt[k].restarts && m->pt[k].reversible && pt_arch_ok(m, &m->pt[k])) { c = m->pt[k]; found = 1; }
+    pthread_mutex_unlock(&m->mu);
+    if (!found) return;   /* no such patch in this list (or not for this CPU): nothing to add */
+    if (c.checked && !strcmp(c.state, "patched")) return;
+    if (ensure_patch(m, &c, "the addin")) say(m, WARN, "The addin will install, but without \"%s\" it is gone after a reboot.", c.title);
 }
 
 /* APPLY / UNDO: the script's own `install --confirmed` / `uninstall --confirmed` (it keeps its own backup and puts things back if it fails),
@@ -1759,9 +1784,14 @@ static int bg_stale(const mgr_t *m) {
     return sh(cmd) == 0;
 }
 
+/* The Plugin Manager app (an addin: the mode slot plus this daemon, modeslot/app) runs the background server itself, in the
+ * same unit; while it is installed this plugin leaves the server alone: one daemon only (port 8790, one work folder). */
+#define APP_DIR "/data/mpc-addins/pm-app"
+static int app_installed(void) { return access(APP_DIR "/openmpc-pm-daemon", X_OK) == 0; }
+
 static void bg_heal(mgr_t *m) {
     static int tried;
-    if (tried || !bg_stale(m)) return;
+    if (tried || app_installed() || !bg_stale(m)) return;
     tried = 1;
     int rc = bg_install(m);
     logf_("background server: the installed daemon differs from this plugin's: reinstalled (exit %d)", rc);
@@ -2884,6 +2914,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
     const char *err = NULL;
     char why[300];
     int i;
+    addin_restore_first(m, q, nq);
     for (i = 0; i < nq && !err; i++) {
         pkg_t *p = &q[i];
         if (p->queued == Q_REGISTER) continue;   /* an entry is added from the folder's plugin-meta.xml: nothing to fetch */
@@ -3082,6 +3113,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
             if (v) { for (int k = 0; k < m->npkg; k++) fprintf(v, "%s\t%s\n", m->pkg[k].id, m->pkg[k].name); fclose(v); }
             char src[320], cmd[900];
             bg_src(m, src, sizeof src);
+            if (!*src && m->own[0]) snprintf(src, sizeof src, "%s", m->own);   /* the Plugin Manager app: the program sits in its own folder */
             unlink(WORK "/splash");
             if (*src && snprintf(cmd, sizeof cmd, "[ -f '%s/openmpc-pm-splash' ] && cp '%s/openmpc-pm-splash' '" WORK "/splash.new' && chmod 755 '" WORK "/splash.new' && "
                                  "mv '" WORK "/splash.new' '" WORK "/splash'", src, src) < (int)sizeof cmd)
@@ -3652,6 +3684,7 @@ static void *mgr_create(const char *data_dir) {
     if (!m) return NULL;
     pthread_mutex_init(&m->mu, NULL);
     pthread_cond_init(&m->cv, NULL);
+    m->rows = ROWS_DEFAULT;
     m->sel = m->menu = -1;
     m->online = 1;
     snprintf(m->status, sizeof m->status, "Starting\xe2\x80\xa6");
@@ -3780,7 +3813,18 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
     if (!access(WORK "/trace", F_OK) && strcmp(key, "display_rev"))   /* touch /tmp/pluginmgr/trace: log every input */
         logf_("set %s=%s", key, val);
     pthread_mutex_lock(&m->mu);
-    int idx[MAXPKG], nv = visible(m, idx), pages = nv ? (nv + ROWS - 1) / ROWS : 1;
+    if (!strcmp(key, "rows")) {   /* cards per page, for a taller screen (the mode-slot page); the first card shown stays in view */
+        int r = (int)v;
+        if (r >= 1 && r <= ROWS_MAX && r != m->rows) {
+            int first = m->page * m->rows;
+            m->rows = r;
+            m->page = first / r;
+            m->rev++;
+        }
+        pthread_mutex_unlock(&m->mu);
+        return;
+    }
+    int idx[MAXPKG], nv = visible(m, idx), pages = nv ? (nv + m->rows - 1) / m->rows : 1;
     int busy = m->busy == J_PREPARE || m->busy == J_LAUNCH;
     if (v >= 0.5 && is_button(key)) {   /* the same button twice within 250 ms is one tap */
         if (!strcmp(key, m->tap_key) && repeated(&m->tap_t, 250)) { pthread_mutex_unlock(&m->mu); return; }
@@ -3849,7 +3893,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
             int f = o < 0 ? 0 : o > 2 * nv - 1 ? 2 * nv - 1 : o;   /* in half cards: two Q-Link ticks per card */
             m->wsel = f / 2; m->wsel_half = f % 2;
             m->wsel_on = nv > 0;
-            m->page = m->wsel / ROWS;
+            m->page = m->wsel / m->rows;
             /* shown as the card selection (the tile's red outline, "card<r>_on", which the wrapper polls every 10 ms): a frame drawn
              * from a when= picture sat under the cards and never showed (Live III, 2026-11-22) */
             m->sel = idx[m->wsel];
@@ -3862,7 +3906,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
             m->qpage_half = f % 2;
             if (f / 2 != m->page) {
                 m->page = f / 2; m->menu = -1;
-                m->wsel = m->page * ROWS; m->wsel_half = 0; m->wsel_on = 1; m->sel = idx[m->wsel];
+                m->wsel = m->page * m->rows; m->wsel_half = 0; m->wsel_on = 1; m->sel = idx[m->wsel];
             }
         }
     } else if (v >= 0.5 && !strcmp(key, "wsel_open")) {   /* the wheel's press: the highlighted plugin's details, as a tap on its card */
@@ -3882,7 +3926,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         if (key[0] != 's') m->detail[0] = 0;   /* the sort, restored with the project, leaves things be */
     } else if (!strncmp(key, "card", 4)) {   /* a tap anywhere on a card selects it and opens its details (both toggle
                                                  * directions); not before the catalog loaded, so a restored value can't */
-        int r = key[4] - '1', k = m->page * ROWS + r;
+        int r = key[4] - '1', k = m->page * m->rows + r;
         if (m->loaded && !m->detail[0] && k >= 0 && k < nv) {
             m->sel = idx[k];
             m->wsel = k; m->wsel_on = 1; m->wsel_half = 0;
@@ -3941,7 +3985,9 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         m->web_pref = !m->web_pref;
         cfg_save(m);
     } else if (!strcmp(key, "set_bgsrv_btn")) {   /* SETTINGS: install/remove the always-on background server (Gen2) */
-        if (!m->bg_avail)
+        if (app_installed() && !m->bg_on)   /* removing this plugin's server is always allowed; installing it is not */
+            say_locked(m, WARN, "The Plugin Manager app runs the background server: remove the app to use this plugin's");
+        else if (!m->bg_avail)
             say_locked(m, ERR, "This build ships no background server payload");
         else if (m->bg_on) {
             int rc = bg_uninstall(m);
@@ -4005,16 +4051,16 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
     } else if (key[0] == 'd' && key[1] == '_') {   /* d_act, d_more, d_reinstall, d_remove */
         int i = detail_of(m);
         if (i >= 0 && !busy) act(m, i, key + 2);
-    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; if (m->wsel_on) { m->wsel -= ROWS; m->wsel_half = 0; } }   /* hidden by the details */
-    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; if (m->wsel_on) { m->wsel = m->wsel + ROWS < nv ? m->wsel + ROWS : nv - 1; m->wsel_half = 0; } }   /* the highlight follows the page */
+    } else if (!strcmp(key, "page_prev") && !m->detail[0] && m->page > 0) { m->page--; m->menu = -1; if (m->wsel_on) { m->wsel -= m->rows; m->wsel_half = 0; } }   /* hidden by the details */
+    else if (!strcmp(key, "page_next") && !m->detail[0] && m->page + 1 < pages) { m->page++; m->menu = -1; if (m->wsel_on) { m->wsel = m->wsel + m->rows < nv ? m->wsel + m->rows : nv - 1; m->wsel_half = 0; } }   /* the highlight follows the page */
     else if (!strcmp(key, "refresh")) post(m, J_REFRESH);
     else if (!strcmp(key, "update_all") && !busy) {
         for (int i = 0; i < m->npkg; i++) if (has_update(&m->pkg[i]) && !m->pkg[i].queued) requeue(m, &m->pkg[i], Q_INSTALL);
     } else if (!strcmp(key, "apply") && !busy) {
         if (m->ready) m->confirm = 1;   /* restart only from the prompt */
         else if (can_apply(m)) post(m, J_PREPARE);
-    } else if (key[0] == 'r' && key[1] >= '1' && key[1] <= '0' + ROWS && key[2] == '_' && !m->detail[0]) {
-        int k = m->page * ROWS + key[1] - '1';
+    } else if (key[0] == 'r' && key[1] >= '1' && key[1] <= '0' + m->rows && key[2] == '_' && !m->detail[0]) {
+        int k = m->page * m->rows + key[1] - '1';
         const char *f = key + 3;
         if (k < nv && !strcmp(f, "open")) {   /* the thumbnail */
             m->sel = idx[k];
@@ -4032,9 +4078,9 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
     size_t kl = strlen(key);
     /* The wrapper asks every text param for "<key>_on" (a list tile's selection) every 10 ms until it is told there is
      * none: only the cards' titles have one. Answering the others kept ~60 lookups running every 10 ms. */
-    if (kl > 3 && !strcmp(key + kl - 3, "_on") && !(!strncmp(key, "card", 4) && key[4] >= '1' && key[4] <= '0' + ROWS)) return 0;
+    if (kl > 3 && !strcmp(key + kl - 3, "_on") && !(!strncmp(key, "card", 4) && key[4] >= '1' && key[4] <= '0' + m->rows)) return 0;
     pthread_mutex_lock(&m->mu);
-    int idx[MAXPKG], nv = visible(m, idx), pages = nv ? (nv + ROWS - 1) / ROWS : 1, ok = 1;
+    int idx[MAXPKG], nv = visible(m, idx), pages = nv ? (nv + m->rows - 1) / m->rows : 1, ok = 1;
     if (m->page >= pages) m->page = pages - 1;
     int upd = count_updates(m), q = count_queued(m), busy = m->busy == J_PREPARE || m->busy == J_LAUNCH;
     int d = detail_of(m);
@@ -4043,8 +4089,8 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
     else if (!strcmp(key, "wsel")) snprintf(b, n, "%d", !nv ? m->wsel_idle : m->wsel_on && m->wsel < nv ? 2 * m->wsel + m->wsel_half : 0);   /* the clamped value, in half cards: the host nudges from it */
     else if (!strcmp(key, "qpage")) snprintf(b, n, "%d", !nv ? m->qpage_idle : 2 * m->page + m->qpage_half);
     else if (!strcmp(key, "wsel_open")) snprintf(b, n, "0");
-    else if (!strncmp(key, "hl", 2) && key[2] >= '1' && key[2] <= '0' + ROWS && !key[3])   /* the highlight frame of card row N */
-        snprintf(b, n, "%d", m->wsel_on && !m->detail[0] && !m->kb && m->wsel < nv && m->wsel / ROWS == m->page && m->wsel % ROWS == key[2] - '1');
+    else if (!strncmp(key, "hl", 2) && key[2] >= '1' && key[2] <= '0' + m->rows && !key[3])   /* the highlight frame of card row N */
+        snprintf(b, n, "%d", m->wsel_on && !m->detail[0] && !m->kb && m->wsel < nv && m->wsel / m->rows == m->page && m->wsel % m->rows == key[2] - '1');
     else if (!strcmp(key, "tab")) snprintf(b, n, "%d", m->tab);
     else if (!strcmp(key, "kind")) snprintf(b, n, "%d", m->kindf);
     else if (!strcmp(key, "sort")) snprintf(b, n, "%d", m->sort);
@@ -4172,7 +4218,8 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
     }
     else if (!strcmp(key, "set_web_txt")) snprintf(b, n, "%s%s", m->web_pref ? "ON" : "OFF", m->web_pref != m->web_on ? "  \xc2\xb7  restart" : "");
     else if (!strcmp(key, "set_bgsrv_txt")) {
-        if (!m->bg_avail) snprintf(b, n, "not in this build");
+        if (app_installed()) snprintf(b, n, m->bg_on ? "run by the Plugin Manager app  \xc2\xb7  this plugin's is not needed" : "run by the Plugin Manager app");
+        else if (!m->bg_avail) snprintf(b, n, "not in this build");
         else if (!m->bg_on) snprintf(b, n, "OFF");
         else snprintf(b, n, "ON%s", m->bg_run ? "  \xc2\xb7  running" : "  \xc2\xb7  starts at boot");
     }
@@ -4222,12 +4269,12 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
     else if (!strcmp(key, "upd_all")) snprintf(b, n, "%d", upd > 0 && !busy);
     else if (!strcmp(key, "apply_state"))   /* 0 off, 1 apply, 2 preparing, 3 ready (restart), 4 retry */
         snprintf(b, n, "%d", busy ? 2 : m->ready ? 3 : m->failed && q && can_apply(m) ? 4 : can_apply(m) ? 1 : 0);
-    else if (!strncmp(key, "card", 4) && key[4] >= '1' && key[4] <= '0' + ROWS) {   /* card<r>_1: the name, and its selection */
-        int k = m->page * ROWS + key[4] - '1', i = k < nv && d < 0 ? idx[k] : -1;
+    else if (!strncmp(key, "card", 4) && key[4] >= '1' && key[4] <= '0' + m->rows) {   /* card<r>_1: the name, and its selection */
+        int k = m->page * m->rows + key[4] - '1', i = k < nv && d < 0 ? idx[k] : -1;
         if (strstr(key, "_on")) snprintf(b, n, "%d", i >= 0 && i == m->sel);
         else snprintf(b, n, "%s", i >= 0 ? m->pkg[i].name : " ");
-    } else if (key[0] == 'r' && key[1] >= '1' && key[1] <= '0' + ROWS && key[2] == '_') {
-        int k = m->page * ROWS + key[1] - '1';
+    } else if (key[0] == 'r' && key[1] >= '1' && key[1] <= '0' + m->rows && key[2] == '_') {
+        int k = m->page * m->rows + key[1] - '1';
         card_field(m, k < nv && d < 0 ? idx[k] : -1, key + 3, b, n);
     } else if (!strcmp(key, "view")) snprintf(b, n, "%d", d >= 0);
     else if (!strcmp(key, "confirm")) snprintf(b, n, "%d", m->confirm && m->ready && !busy);
